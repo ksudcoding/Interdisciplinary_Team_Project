@@ -630,14 +630,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ef05970d9f5de345b05c74aef165b2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  prefabToSpawn: {fileID: 8514761320118986776, guid: 7b7330c8f3e42d14fa6f29629698e46a, type: 3}
+  pileCardPrefab: {fileID: 8514761320118986776, guid: 7b7330c8f3e42d14fa6f29629698e46a, type: 3}
+  uiCardPrefab: {fileID: 8514761320118986776, guid: 0e858d20f1a06374b84ae5766b597c76, type: 3}
   spawnCount: 5
   verticalSpacing: 0.05
   playerHand: {fileID: 1728161254}
+  cardSlotManager: {fileID: 1970732639}
   moveDuration: 0.25
-  targetCanvas: {fileID: 1996735614}
-  uiCardPrefab: {fileID: 3639029704774252308, guid: c08c683e4e7f0884cb4e6b3578ccd5c0, type: 3}
-  handAlignment: 4
 --- !u!4 &1829635086
 Transform:
   m_ObjectHideFlags: 0
@@ -662,6 +661,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1970732638}
+  - component: {fileID: 1970732639}
   m_Layer: 0
   m_Name: CardSlot
   m_TagString: Untagged
@@ -678,12 +678,28 @@ Transform:
   m_GameObject: {fileID: 1970732637}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: -1.49, z: 2.16}
+  m_LocalScale: {x: 0.75, y: 0.75, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 670323777}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1970732639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1970732637}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 599dc63257733654dbf983fc110959e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CardSlotManager
+  cardSpacing: 0.7
+  centerHand: 1
+  cardScale: {x: 1, y: 0.01, z: 1}
+  cardEulerRotation: {x: -90, y: 180, z: 0}
 --- !u!1 &1996735611
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,85 +1,36 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System.Collections;
 
 public class CardPileManager : MonoBehaviour
 {
-    [Header("3D Prefab Settings")]
-    [Tooltip("Drag your 3D card prefab here.")]
-    public GameObject prefabToSpawn;
+    [Header("3D Pile Settings")]
+    [Tooltip("Drag your 3D card prefab here (used for the pile).")]
+    public GameObject pileCardPrefab;
     
-    [Header("Pile Settings")]
+    [Header("Hand / UI Card Settings")]
+    [Tooltip("Drag your separate UI/Hand card prefab here.")]
+    public GameObject uiCardPrefab;
+
+    [Header("Pile Layout Settings")]
     public int spawnCount = 5; 
     public float verticalSpacing = 0.3f;
 
-    [Header("Player Hand Settings")]
-    [Tooltip("Drag PlayerHand (child of Main Camera) here.")]
+    [Header("Hand / Slot References")]
+    [Tooltip("Drag PlayerHand (where the card flies to initially) here.")]
     public Transform playerHand;
+    [Tooltip("Drag CardSlot (which has the CardSlotManager script attached) here.")]
+    public CardSlotManager cardSlotManager;
+
+    [Header("Animation Settings")]
     public float moveDuration = 0.25f;
 
-    [Header("UI Hand Settings")]
-    [Tooltip("(Optional) Drag your existing Canvas here, or leave blank to auto-generate.")]
-    public Canvas targetCanvas;
-    [Tooltip("(Optional) Drag your custom UI Card prefab here (must NOT have a Canvas component on it!). Leave blank for default white card.")]
-    public GameObject uiCardPrefab;
-
-    [Header("UI Alignment Settings")]
-    [Tooltip("How cards align inside the bottom hand panel (e.g., LowerCenter, LowerLeft, LowerRight).")]
-    public TextAnchor handAlignment = TextAnchor.LowerCenter;
-
-    private Transform uiCardHandPanel;
     private List<GameObject> pileItems = new List<GameObject>();
 
     void Start()
     {
-        SetupUIHand();
         SpawnPile();
-    }
-
-    void SetupUIHand()
-    {
-        // If no canvas was assigned, look for one in the scene or create one automatically
-        if (targetCanvas == null)
-        {
-            targetCanvas = FindFirstObjectByType<Canvas>();
-            if (targetCanvas == null)
-            {
-                GameObject canvasObj = new GameObject("RuntimeCanvas");
-                targetCanvas = canvasObj.AddComponent<Canvas>();
-                targetCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvasObj.AddComponent<CanvasScaler>();
-                canvasObj.AddComponent<GraphicRaycaster>();
-            }
-        }
-
-        // Create a fixed-size hand panel locked dead-center at the bottom of the screen
-        Transform existingPanel = targetCanvas.transform.Find("PlayerCardHand");
-        if (existingPanel != null)
-        {
-            uiCardHandPanel = existingPanel;
-        }
-        else
-        {
-            GameObject panelObj = new GameObject("PlayerCardHand");
-            panelObj.transform.SetParent(targetCanvas.transform, false);
-            
-            RectTransform panelRect = panelObj.AddComponent<RectTransform>();
-            panelRect.anchorMin = new Vector2(0.5f, 0f);
-            panelRect.anchorMax = new Vector2(0.5f, 0f);
-            panelRect.pivot = new Vector2(0.5f, 0f);
-            panelRect.anchoredPosition = new Vector2(0f, 20f); 
-            panelRect.sizeDelta = new Vector2(700f, 160f); 
-
-            HorizontalLayoutGroup layoutGroup = panelObj.AddComponent<HorizontalLayoutGroup>();
-            layoutGroup.childForceExpandWidth = false;
-            layoutGroup.childForceExpandHeight = false;
-            layoutGroup.spacing = 15f;
-            layoutGroup.childAlignment = handAlignment; 
-
-            uiCardHandPanel = panelObj.transform;
-        }
     }
 
     void SpawnPile()
@@ -87,14 +38,44 @@ public class CardPileManager : MonoBehaviour
         for (int i = 0; i < spawnCount; i++)
         {
             Vector3 spawnPos = transform.position + new Vector3(0f, i * verticalSpacing, 0f);
-            GameObject card = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity);
+            GameObject card = Instantiate(pileCardPrefab, spawnPos, Quaternion.identity);
             
             if (card.GetComponent<Collider>() == null)
             {
                 card.AddComponent<BoxCollider>();
             }
 
+            MakeCardUnlit(card);
             pileItems.Add(card);
+        }
+    }
+
+    void MakeCardUnlit(GameObject card)
+    {
+        // Makes any card completely unaffected by scene lighting
+        Renderer[] renderers = card.GetComponentsInChildren<Renderer>();
+        foreach (Renderer rend in renderers)
+        {
+            foreach (Material mat in rend.materials)
+            {
+                Shader unlitShader = Shader.Find("Unlit/Texture");
+                if (unlitShader != null && mat.HasProperty("_MainTex") && mat.mainTexture != null)
+                {
+                    Texture tex = mat.mainTexture;
+                    mat.shader = unlitShader;
+                    mat.mainTexture = tex;
+                }
+                else
+                {
+                    Shader unlitColorShader = Shader.Find("Unlit/Color");
+                    if (unlitColorShader != null)
+                    {
+                        Color col = mat.HasProperty("_Color") ? mat.color : Color.white;
+                        mat.shader = unlitColorShader;
+                        if (mat.HasProperty("_Color")) mat.color = col;
+                    }
+                }
+            }
         }
     }
 
@@ -131,20 +112,20 @@ public class CardPileManager : MonoBehaviour
             col.enabled = false;
         }
 
-        if (playerHand != null)
+        if (playerHand != null && cardSlotManager != null)
         {
             StartCoroutine(SmoothMoveToHand(drawnCard, playerHand));
         }
         else
         {
+            Debug.LogWarning("PlayerHand or CardSlotManager is missing references in the Inspector!");
             Destroy(drawnCard);
-            SpawnUICard();
         }
 
         Debug.Log($"Card drawn! Cards remaining in pile: {pileItems.Count}");
     }
 
-    IEnumerator SmoothMoveToHand(GameObject card, Transform targetHand)
+    IEnumerator SmoothMoveToHand(GameObject card, Transform flightTarget)
     {
         float elapsed = 0f;
         Vector3 startPos = card.transform.position;
@@ -157,51 +138,28 @@ public class CardPileManager : MonoBehaviour
 
             if (card == null) yield break;
 
-            card.transform.position = Vector3.Lerp(startPos, targetHand.position, t);
-            card.transform.rotation = Quaternion.Slerp(startRot, targetHand.rotation, t);
+            card.transform.position = Vector3.Lerp(startPos, flightTarget.position, t);
+            card.transform.rotation = Quaternion.Slerp(startRot, flightTarget.rotation, t);
 
             yield return null;
         }
 
+        // Flight complete: destroy the flying pile card
         if (card != null)
         {
             Destroy(card);
         }
 
-        SpawnUICard();
-    }
-
-    void SpawnUICard()
-    {
-        if (uiCardHandPanel == null) return;
-
-        GameObject newUICard;
-
-        if (uiCardPrefab != null)
+        // Instantiate the UICard in the hand slot and force it to be completely unlit
+        if (cardSlotManager != null && uiCardPrefab != null)
         {
-            // PASSING 'false' HERE FOR WORLD POSITION STAYS FIXES THE OFFSET BUG!
-            newUICard = Instantiate(uiCardPrefab, uiCardHandPanel, false);
+            GameObject newUICard = Instantiate(uiCardPrefab);
+            MakeCardUnlit(newUICard); // <-- This ensures scene lights ignore the UICard!
+            cardSlotManager.AddCardToHand(newUICard);
         }
-        else
+        else if (cardSlotManager != null)
         {
-            newUICard = new GameObject("UICard", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            newUICard.transform.SetParent(uiCardHandPanel, false);
-            
-            RectTransform rt = newUICard.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(100f, 150f);
-
-            Image img = newUICard.GetComponent<Image>();
-            img.color = Color.white;
+            Debug.LogWarning("UICard Prefab slot is empty in CardPileManager inspector!");
         }
-
-        // Force proper layout rect transforms
-        RectTransform cardRect = newUICard.GetComponent<RectTransform>();
-        if (cardRect != null)
-        {
-            cardRect.localScale = Vector3.one;
-            cardRect.anchoredPosition3D = Vector3.zero;
-        }
-
-        Debug.Log("UI Card successfully added into bottom center layout!");
     }
 }
