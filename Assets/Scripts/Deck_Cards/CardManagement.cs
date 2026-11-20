@@ -112,6 +112,13 @@ public class CardPileManager : MonoBehaviour
             col.enabled = false;
         }
 
+        // Play the taking-playing-card sound effect from the card when drawn
+        AudioSource cardAudio = drawnCard.GetComponent<AudioSource>();
+        if (cardAudio != null && cardAudio.clip != null)
+        {
+            cardAudio.Play();
+        }
+
         if (playerHand != null && cardSlotManager != null)
         {
             StartCoroutine(SmoothMoveToHand(drawnCard, playerHand));

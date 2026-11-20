@@ -14,9 +14,20 @@ public class CardSlotManager : MonoBehaviour
     [Tooltip("The exact scale stats applied to every card in the hand.")]
     public Vector3 cardScale = new Vector3(2.569168f, 0.03f, 4f);
     [Tooltip("The rotation applied to cards in the hand.")]
-    public Vector3 cardEulerRotation = new Vector3(-90f, 180f, 0f);
+    public Vector3 cardEulerRotation = new Vector3(90f, 90f, 270f);
 
     private List<GameObject> handCards = new List<GameObject>();
+    private GameCardManager gameCardManager;
+
+    void Start()
+    {
+        // Automatically locate the GameCardManager in the scene
+        gameCardManager = FindObjectOfType<GameCardManager>();
+        if (gameCardManager == null)
+        {
+            Debug.LogWarning("[CardSlotManager] GameCardManager not found in the scene!");
+        }
+    }
 
     public void AddCardToHand(GameObject card)
     {
@@ -42,11 +53,17 @@ public class CardSlotManager : MonoBehaviour
     {
         if (handCards.Contains(card))
         {
-            Debug.Log($"[Card System] Playing card: {card.name}. Executing card action!");
-
-            // ==========================================
-            // TODO: PUT YOUR CUSTOM CARD ACTION CODE HERE
-            // ==========================================
+            // 1. Get the card's name from its CardDisplay component and process effect
+            CardDisplay display = card.GetComponent<CardDisplay>();
+            if (display != null && gameCardManager != null)
+            {
+                Debug.Log($"[Card System] Playing card: {display.cardName}. Executing card action!");
+                gameCardManager.ProcessCardPlay(display.cardName);
+            }
+            else
+            {
+                Debug.Log($"[Card System] Playing card: {card.name}. Executing card action!");
+            }
 
             // Remove from tracking array and destroy the card object
             handCards.Remove(card);
@@ -65,7 +82,15 @@ public class CardSlotManager : MonoBehaviour
             UpdateHandLayout();
         }
     }
+    // Add this method inside your CardSlotManager class:
+    public void AddCardToHandWithAnimation(GameObject cardInstance)
+    {
+        // Call your existing method to slot it into hand layout
+        AddCardToHand(cardInstance);
 
+        // Optional: Add a smooth lerp/flight coroutine from center deck to hand position if desired,
+        // or rely on standard layout group transition. Instantiating at the deck marker already handles the start position!
+    }
     private void UpdateHandLayout()
     {
         int totalCards = handCards.Count;
@@ -91,7 +116,7 @@ public class CardSlotManager : MonoBehaviour
                 CardHover hoverScript = handCards[i].GetComponent<CardHover>();
                 if (hoverScript != null)
                 {
-                    hoverScript.Initialize(this, slotPos, baseSortingOrder);
+                    hoverScript.Initialize(this, slotPos, baseSortingOrder, cardScale);
                 }
                 else
                 {

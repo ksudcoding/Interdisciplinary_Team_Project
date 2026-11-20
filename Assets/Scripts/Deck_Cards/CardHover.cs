@@ -1,49 +1,61 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 public class CardHover : MonoBehaviour
 {
     [Header("Hover Settings")]
-    [Tooltip("How high the card moves up vertically when hovered.")]
     public float hoverOffsetY = 0.35f;
-    [Tooltip("How fast the card animates up and down.")]
+    public float hoverScaleMultiplier = 1.15f;
     public float hoverSpeed = 15f;
-    [Tooltip("The correct facing rotation to maintain while hovering.")]
-    public Vector3 targetEulerRotation = new Vector3(-90f, 180f, 0f);
+    public Vector3 targetEulerRotation = new Vector3(-90f, 0f, -180f);
 
-    [Header("Highlight / Outline Settings")]
-    [Tooltip("Editable color tint applied to the card when hovered (acts as an outline/highlight).")]
-    public Color outlineColor = Color.yellow;
+    [Header("Card Base Scale")]
+    public Vector3 defaultCardScale = new Vector3(1f, 0.01f, 1f);
 
-    private Color[] originalColors;
-    private Renderer[] cardRenderers;
+    [Header("Highlight / Outline Object")]
+    public GameObject outlineChildObject;
+
+    [Header("Audio Settings")]
+    public AudioSource hoverAudioSource;
+
     private Vector3 targetSlotPosition;
+    private Vector3 baseCardScale;
     private int baseSortingOrder;
+    private Renderer[] cardRenderers;
     private bool isHovered = false;
     private CardSlotManager slotManager;
+    private UICard uiCard;
+    private GameCardManager gameCardManager;
 
     void Awake()
     {
         cardRenderers = GetComponentsInChildren<Renderer>();
-        
-        // Save original material colors to revert when unhovered
-        List<Color> colorList = new List<Color>();
-        foreach (Renderer rend in cardRenderers)
-        {
-            foreach (Material mat in rend.materials)
-            {
-                if (mat.HasProperty("_Color"))
-                    colorList.Add(mat.color);
-                else
-                    colorList.Add(Color.white);
-            }
-        }
-        originalColors = colorList.ToArray();
+        uiCard = GetComponent<UICard>() ?? GetComponentInChildren<UICard>();
+        gameCardManager = FindAnyObjectByType<GameCardManager>();
+
+        baseCardScale = SanitizeScale(transform.localScale, defaultCardScale);
+        targetSlotPosition = transform.localPosition;
+
+        if (hoverAudioSource == null)
+            hoverAudioSource = GetComponent<AudioSource>();
+
+        if (outlineChildObject != null)
+            outlineChildObject.SetActive(false);
     }
 
-    public void Initialize(CardSlotManager manager, Vector3 position, int sortingOrder)
+    Vector3 SanitizeScale(Vector3 candidate, Vector3 fallback)
+    {
+        if (Mathf.Abs(candidate.x) < 0.0001f || Mathf.Abs(candidate.y) < 0.0001f || Mathf.Abs(candidate.z) < 0.0001f)
+            return fallback;
+        return candidate;
+    }
+
+    public void Initialize(CardSlotManager manager, Vector3 position, int sortingOrder, Vector3 passedScale)
     {
         slotManager = manager;
+        if (gameCardManager == null) gameCardManager = FindAnyObjectByType<GameCardManager>();
+
+        baseCardScale = SanitizeScale(passedScale, defaultCardScale);
+        transform.localScale = baseCardScale;
         SetSlotPosition(position, sortingOrder);
     }
 
@@ -56,64 +68,63 @@ public class CardHover : MonoBehaviour
         {
             ApplySortingOrder(baseSortingOrder);
             transform.localPosition = targetSlotPosition;
+            transform.localScale = baseCardScale;
         }
     }
 
     void Update()
     {
-        Vector3 destination = isHovered ? targetSlotPosition + new Vector3(0f, hoverOffsetY, 0f) : targetSlotPosition;
+        Vector3 destinationPos = isHovered ? targetSlotPosition + new Vector3(0f, hoverOffsetY, 0f) : targetSlotPosition;
+        Vector3 destinationScale = isHovered ? baseCardScale * hoverScaleMultiplier : baseCardScale;
 
-        transform.localPosition = Vector3.Lerp(transform.localPosition, destination, Time.deltaTime * hoverSpeed);
+        transform.localPosition = Vector3.Lerp(transform.localPosition, destinationPos, Time.deltaTime * hoverSpeed);
+        transform.localScale = Vector3.Lerp(transform.localScale, destinationScale, Time.deltaTime * hoverSpeed);
         transform.localEulerAngles = targetEulerRotation;
+
+        if (isHovered && Input.GetMouseButtonDown(1))
+        {
+            if (gameCardManager == null) gameCardManager = FindAnyObjectByType<GameCardManager>();
+            if (gameCardManager != null && gameCardManager.discardController != null)
+            {
+                gameCardManager.discardController.RegisterRightClickForDiscardMode();
+            }
+        }
     }
 
     void OnMouseEnter()
     {
         isHovered = true;
-        ApplySortingOrder(999); // Bring to absolute front when hovered
-        ApplyHighlight(true);
+        ApplySortingOrder(999);
+        if (outlineChildObject != null) outlineChildObject.SetActive(true);
+        if (hoverAudioSource != null && hoverAudioSource.clip != null) hoverAudioSource.Play();
     }
 
     void OnMouseExit()
     {
         isHovered = false;
         ApplySortingOrder(baseSortingOrder);
-        ApplyHighlight(false);
+        if (outlineChildObject != null) outlineChildObject.SetActive(false);
+        transform.localScale = baseCardScale;
     }
 
     void OnMouseDown()
     {
-        // When clicked, tell the Slot Manager to play this card and remove it from hand
-        if (slotManager != null)
-        {
-            slotManager.PlayCard(gameObject);
-        }
-    }
+        if (Input.GetMouseButtonDown(1))
+            return;
 
-    void ApplyHighlight(bool highlight)
-    {
-        int colorIdx = 0;
-        foreach (Renderer rend in cardRenderers)
+        if (uiCard == null) uiCard = GetComponent<UICard>() ?? GetComponentInChildren<UICard>();
+        if (uiCard != null)
         {
-            foreach (Material mat in rend.materials)
-            {
-                if (mat.HasProperty("_Color"))
-                {
-                    mat.color = highlight ? outlineColor : originalColors[colorIdx];
-                }
-                colorIdx++;
-            }
+            uiCard.TryActivateCard();
         }
     }
 
     void ApplySortingOrder(int order)
     {
-        if (cardRenderers != null)
+        if (cardRenderers == null) return;
+        foreach (Renderer rend in cardRenderers)
         {
-            foreach (Renderer rend in cardRenderers)
-            {
-                rend.sortingOrder = order;
-            }
+            if (rend != null) rend.sortingOrder = order;
         }
     }
 }
