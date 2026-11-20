@@ -315,6 +315,8 @@ MonoBehaviour:
   specificCardPrefabs: []
   maxPotentialCards: 4
   maxActionCards: 2
+  applyExactTableCountsOnStart: 1
+  autoReshuffleDiscardsWhenEmpty: 1
   playerPotentialHand: []
   playerActionHand: []
   playerSkipNextTurn: 0
@@ -1254,8 +1256,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
-  m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ScaleFactor: 1.7
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -1272,10 +1274,10 @@ Canvas:
   m_GameObject: {fileID: 1244199567}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
-  m_PixelPerfect: 0
+  m_RenderMode: 1
+  m_Camera: {fileID: 670323776}
+  m_PlaneDistance: 1
+  m_PixelPerfect: 1
   m_ReceivesEvents: 1
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
@@ -1285,7 +1287,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_TargetDisplay: 0
 --- !u!1 &1247724175
 GameObject:
@@ -2046,9 +2048,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 599dc63257733654dbf983fc110959e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardSlotManager
-  cardSpacing: 0.7
+  cardSpacing: 0.8
   centerHand: 1
-  cardScale: {x: 1, y: 0.01, z: 1}
+  cardScale: {x: 1, y: 0.01, z: 1.5}
   cardEulerRotation: {x: 90, y: 90, z: 270}
 --- !u!1 &1996735611
 GameObject:
@@ -2221,9 +2223,12 @@ MonoBehaviour:
   condenseLongLogs: 1
   collapseDuplicates: 1
   wrapLongLines: 0
-  includeTimestamps: 1
   colorCodeLogTypes: 1
   toggleKey: 96
+  bobColorHex: '#5DADE2'
+  playerPlayColorHex: '#58D68D'
+  badMessageColorHex: '#EC7063'
+  defaultColorHex: '#EAECEE'
 --- !u!114 &2127569938
 MonoBehaviour:
   m_ObjectHideFlags: 0

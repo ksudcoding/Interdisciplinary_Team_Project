@@ -6,3 +6,7 @@ Temp/FSTimeGet-8153043910e10af4fa0e179e22f799fc
 Temp/FSTimeGet-24f4d64001e3503408c031bb66acad28
 Temp/__Backupscenes/0.backup
 Temp/UnityLockfile
+/Temp
+*.log
+/Logs
+/Logs

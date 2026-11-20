@@ -85,6 +85,9 @@ public class BotController : MonoBehaviour
 
     void Start()
     {
+        if (gameCardManager == null)
+            gameCardManager = FindAnyObjectByType<GameCardManager>();
+
         if (bobPotentialHand == null) bobPotentialHand = new List<GameCard>();
         if (bobActionHand == null) bobActionHand = new List<GameCard>();
         if (activeBobVisualCards == null) activeBobVisualCards = new List<GameObject>();
@@ -369,7 +372,7 @@ public class BotController : MonoBehaviour
                 if (actionDiscard != null && discarded != null)
                 {
                     actionDiscard.Add(discarded);
-                    Debug.Log($"Bob disc {discarded.cardName}");
+                    Debug.Log($"Bob discarded {discarded.cardName}");
                 }
             }
             UpdateBobVisualHand();
@@ -405,14 +408,28 @@ public class BotController : MonoBehaviour
         }
     }
 
+    private GameCard DrawForBob(GameCardType cardType, CardDeckAndRules rules)
+    {
+        if (gameCardManager == null)
+            gameCardManager = FindAnyObjectByType<GameCardManager>();
+
+        if (gameCardManager != null)
+            return gameCardManager.DrawCardWithAutoReshuffle(cardType);
+
+        return rules != null ? rules.DrawFromDeck(cardType) : null;
+    }
+
     public IEnumerator RefillBobHandRoutine(List<GameCard> potentialDeck, List<GameCard> actionDeck, Transform spawnMarker, int maxPotentials, int maxActions)
     {
+        if (gameCardManager == null)
+            gameCardManager = FindAnyObjectByType<GameCardManager>();
+
         if (gameCardManager == null || gameCardManager.deckRules == null) yield break;
         CardDeckAndRules rules = gameCardManager.deckRules;
 
         while (bobPotentialHand.Count < maxPotentials)
         {
-            GameCard drawn = rules.DrawFromDeck(GameCardType.Potential);
+            GameCard drawn = DrawForBob(GameCardType.Potential, rules);
             if (drawn == null) break;
 
             drawn.drawnOnTurn = bobTurnCounter;
@@ -423,7 +440,7 @@ public class BotController : MonoBehaviour
 
         while (bobActionHand.Count < maxActions)
         {
-            GameCard drawn = rules.DrawFromDeck(GameCardType.Action);
+            GameCard drawn = DrawForBob(GameCardType.Action, rules);
             if (drawn == null) break;
 
             if (drawn.cardName == "Tetrodotoxin")

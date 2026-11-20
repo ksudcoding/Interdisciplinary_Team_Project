@@ -93,7 +93,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 663997600588378940}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9541d86e2fd84c1d9990edf0852d74ab, type: 3}
   m_Name: 
@@ -214,8 +214,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.00000046193594, z: -0, w: 1}
   m_LocalPosition: {x: -0.093440056, y: -0.32953978, z: -3.776695}
-  m_LocalScale: {x: 2.5691676, y: 0.03, z: 4}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 7.707503, y: 0.089999996, z: 12}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 7214659090669865468}
   - {fileID: 2687515320806205170}
@@ -245,6 +245,7 @@ MonoBehaviour:
   hoverScaleMultiplier: 1.15
   hoverSpeed: 15
   targetEulerRotation: {x: -90, y: 180, z: 0}
+  defaultCardScale: {x: 1, y: 0.01, z: 1}
   outlineChildObject: {fileID: 8889210538588924076}
   hoverAudioSource: {fileID: 0}
 --- !u!114 &2132362670978933291
@@ -269,6 +270,7 @@ MonoBehaviour:
   cardDisplay: {fileID: 0}
   cubeRenderer: {fileID: 1302460130897005377}
   playableColor: {r: 0.18, g: 0.85, b: 0.32, a: 1}
+  discardModeColor: {r: 0.95, g: 0.65, b: 0.12, a: 1}
   unplayableColor: {r: 0.9, g: 0.22, b: 0.22, a: 1}
 --- !u!23 &1770387691613663674
 MeshRenderer:
@@ -451,6 +453,95 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   cardNameText: {fileID: 5094910491780684107}
   cardName: 
+  artworkMeshRenderer: {fileID: 1770387691613663674}
+  fallbackTexture: {fileID: 2800000, guid: 850de1ba7407c534ca7224781e447458, type: 3}
+  cardArtworks:
+  - cardName: Weak Stimulus
+    artworkTexture: {fileID: 2800000, guid: 3824751a3e78f7a419975d5a69a4c6e1, type: 3}
+  - cardName: Weak Stim
+    artworkTexture: {fileID: 2800000, guid: 3824751a3e78f7a419975d5a69a4c6e1, type: 3}
+  - cardName: Strong Stimulus
+    artworkTexture: {fileID: 2800000, guid: 795749a95e4792b429667ea63f4a6014, type: 3}
+  - cardName: Strong Stim
+    artworkTexture: {fileID: 2800000, guid: 795749a95e4792b429667ea63f4a6014, type: 3}
+  - cardName: Strong Stimulus Joker
+    artworkTexture: {fileID: 2800000, guid: 795749a95e4792b429667ea63f4a6014, type: 3}
+  - cardName: Action Joker
+    artworkTexture: {fileID: 2800000, guid: 013b26031f92c8a4fa1a62ade384eed1, type: 3}
+  - cardName: Potential Joker
+    artworkTexture: {fileID: 2800000, guid: 013b26031f92c8a4fa1a62ade384eed1, type: 3}
+  - cardName: Pot Joker
+    artworkTexture: {fileID: 2800000, guid: 013b26031f92c8a4fa1a62ade384eed1, type: 3}
+  - cardName: Propagation Joker
+    artworkTexture: {fileID: 2800000, guid: 013b26031f92c8a4fa1a62ade384eed1, type: 3}
+  - cardName: Propagation
+    artworkTexture: {fileID: 2800000, guid: 013b26031f92c8a4fa1a62ade384eed1, type: 3}
+  - cardName: Alcohol
+    artworkTexture: {fileID: 2800000, guid: aab82dd47aefb9d478fe653ac18e79e0, type: 3}
+  - cardName: Alcahol
+    artworkTexture: {fileID: 2800000, guid: aab82dd47aefb9d478fe653ac18e79e0, type: 3}
+  - cardName: Coffee
+    artworkTexture: {fileID: 2800000, guid: 7560cc58ab987424eb3e1743d999dbd4, type: 3}
+  - cardName: Caffeine
+    artworkTexture: {fileID: 2800000, guid: 7560cc58ab987424eb3e1743d999dbd4, type: 3}
+  - cardName: Tetrodotoxin
+    artworkTexture: {fileID: 2800000, guid: bb59bfcc8bace9549bc45bdeb02e83b3, type: 3}
+  - cardName: Absolute Refractory Period
+    artworkTexture: {fileID: 2800000, guid: a3337ef73f4790449808deb65009b1f6, type: 3}
+  - cardName: Abs Refractory
+    artworkTexture: {fileID: 2800000, guid: a3337ef73f4790449808deb65009b1f6, type: 3}
+  - cardName: Absolute Refractory Pink
+    artworkTexture: {fileID: 2800000, guid: f3f6074adeaf53f458febc50eeef1af0, type: 3}
+  - cardName: Relative Refractory Period
+    artworkTexture: {fileID: 2800000, guid: b7c8c4385539c6b40b42435e7bf28f4a, type: 3}
+  - cardName: Rel Refractory
+    artworkTexture: {fileID: 2800000, guid: b7c8c4385539c6b40b42435e7bf28f4a, type: 3}
+  - cardName: Relative Refractory Blue
+    artworkTexture: {fileID: 2800000, guid: b7c8c4385539c6b40b42435e7bf28f4a, type: 3}
+  - cardName: Myelinated Axon
+    artworkTexture: {fileID: 2800000, guid: 15121a9c0bf403344a2242ccc1d7b4f7, type: 3}
+  - cardName: Myelinated
+    artworkTexture: {fileID: 2800000, guid: 15121a9c0bf403344a2242ccc1d7b4f7, type: 3}
+  - cardName: Yellow Myelinated Axon
+    artworkTexture: {fileID: 2800000, guid: a4decbc7f6f09064e9709f537332dc2f, type: 3}
+  - cardName: Demyelinated Axon
+    artworkTexture: {fileID: 2800000, guid: 030eb377d265e004eb99673f5c8e89a4, type: 3}
+  - cardName: Demyelinated
+    artworkTexture: {fileID: 2800000, guid: 030eb377d265e004eb99673f5c8e89a4, type: 3}
+  - cardName: Yellow Demyelinated Axon
+    artworkTexture: {fileID: 2800000, guid: 4b43413fe6bb91c4d915ca952a6b0e33, type: 3}
+  - cardName: Large Axon
+    artworkTexture: {fileID: 2800000, guid: 61b980bb650bc554e9769831639540e0, type: 3}
+  - cardName: Yellow Large Axon
+    artworkTexture: {fileID: 2800000, guid: f838cd97de3c2334a8bb3a8b4b4ab645, type: 3}
+  - cardName: Narrow Axon
+    artworkTexture: {fileID: 2800000, guid: 8761dd2267534c64fb3eaf0b6b260bc0, type: 3}
+  - cardName: Yellow Narrow Axon
+    artworkTexture: {fileID: 2800000, guid: 3429433007cd2a8418763a0267c90178, type: 3}
+  - cardName: K+ Channel Closed
+    artworkTexture: {fileID: 2800000, guid: 726bde5f9bc79b049980b5a758c0852a, type: 3}
+  - cardName: K+ Channel Open Blue
+    artworkTexture: {fileID: 2800000, guid: b98728280d26af44d883bc42b18efaa4, type: 3}
+  - cardName: K+ Channel Open Magenta
+    artworkTexture: {fileID: 2800000, guid: 005354ecfd3c23c41b87c60dd170edb2, type: 3}
+  - cardName: Na+ Channel Closed
+    artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
+  - cardName: Na+ Channel Closed Blue
+    artworkTexture: {fileID: 2800000, guid: 3915e142993a8a948812cb7f06a6690e, type: 3}
+  - cardName: Na+ Channel Inactive Magenta
+    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ Channel Open
+    artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
+  - cardName: Na+ Channel Open Peach
+    artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
+  - cardName: Na+ Inact / K+ Open
+    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ Channel INACTIVE AND K+ Channel OPEN
+    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ Open / K+ Closed
+    artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
+  - cardName: Na+ Closed / K+
+    artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
 --- !u!1 &8889210538588924076
 GameObject:
   m_ObjectHideFlags: 0

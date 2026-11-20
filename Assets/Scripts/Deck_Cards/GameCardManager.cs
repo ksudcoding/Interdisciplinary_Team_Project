@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -34,6 +35,10 @@ public class GameCardManager : MonoBehaviour
     public int maxPotentialCards = 4;
     public int maxActionCards = 2;
 
+    [Header("Deck Counts & Reshuffle")]
+    public bool applyExactTableCountsOnStart = true;
+    public bool autoReshuffleDiscardsWhenEmpty = true;
+
     [Header("Player State")]
     public List<GameCard> playerPotentialHand = new List<GameCard>();
     public List<GameCard> playerActionHand = new List<GameCard>();
@@ -44,8 +49,34 @@ public class GameCardManager : MonoBehaviour
     private bool isEndingTurn = false;
     private bool isPlayerPieceMoving = false;
     private Coroutine moveWaitCoroutine;
+    private readonly System.Random rng = new System.Random();
+    private int nextGeneratedCardId = 1;
 
     public int MaxTotalHandCards => Mathf.Max(0, maxPotentialCards) + Mathf.Max(0, maxActionCards);
+
+    private static readonly (string name, GameCardType type, int count)[] ExactDeckCounts =
+    {
+        // Potential cards (122)
+        ("Propagation", GameCardType.Potential, 24),
+        ("Strong stimulus", GameCardType.Potential, 12),
+        ("Na+ open", GameCardType.Potential, 18),
+        ("Na+ closed", GameCardType.Potential, 14),
+        ("Na+ inactive", GameCardType.Potential, 14),
+        ("K+ open", GameCardType.Potential, 26),
+        ("K+ closed", GameCardType.Potential, 14),
+
+        // Action cards (61)
+        ("Tetrodotoxin", GameCardType.Action, 6),
+        ("Caffeine", GameCardType.Action, 8),
+        ("Alcohol", GameCardType.Action, 8),
+        ("Large axon", GameCardType.Action, 9),
+        ("Narrow axon", GameCardType.Action, 4),
+        ("Myelinated axon", GameCardType.Action, 9),
+        ("Demyelinated axon", GameCardType.Action, 4),
+        ("Weak stimulus", GameCardType.Action, 6),
+        ("Absolute refractory period", GameCardType.Action, 4),
+        ("Relative refractory period", GameCardType.Action, 4)
+    };
 
     void Awake()
     {
@@ -67,8 +98,101 @@ public class GameCardManager : MonoBehaviour
         if (deckRules != null)
         {
             deckRules.InitializeAndShuffleDecks();
+            if (applyExactTableCountsOnStart)
+            {
+                BuildExactTableDecksAndShuffle();
+            }
         }
         StartCoroutine(SetupGameRoutine());
+    }
+
+    [ContextMenu("Build Exact Table Decks (122 Potential / 61 Action) & Shuffle")]
+    public void BuildExactTableDecksAndShuffle()
+    {
+        if (deckRules == null) return;
+
+        if (deckRules.potentialDrawDeck == null) deckRules.potentialDrawDeck = new List<GameCard>();
+        if (deckRules.actionDrawDeck == null) deckRules.actionDrawDeck = new List<GameCard>();
+        if (deckRules.potentialDiscardPile == null) deckRules.potentialDiscardPile = new List<GameCard>();
+        if (deckRules.actionDiscardPile == null) deckRules.actionDiscardPile = new List<GameCard>();
+
+        deckRules.potentialDrawDeck.Clear();
+        deckRules.actionDrawDeck.Clear();
+        deckRules.potentialDiscardPile.Clear();
+        deckRules.actionDiscardPile.Clear();
+        nextGeneratedCardId = 1;
+
+        foreach (var entry in ExactDeckCounts)
+        {
+            int qty = Mathf.Max(0, entry.count);
+            for (int i = 0; i < qty; i++)
+            {
+                GameCard card = new GameCard
+                {
+                    card_Id = $"{(entry.type == GameCardType.Potential ? "POT" : "ACT")}_{nextGeneratedCardId++:000}",
+                    cardName = entry.name,
+                    type = entry.type,
+                    drawnOnTurn = -1
+                };
+
+                if (entry.type == GameCardType.Potential)
+                    deckRules.potentialDrawDeck.Add(card);
+                else
+                    deckRules.actionDrawDeck.Add(card);
+            }
+        }
+
+        ShuffleCards(deckRules.potentialDrawDeck);
+        ShuffleCards(deckRules.actionDrawDeck);
+    }
+
+    public GameCard DrawCardWithAutoReshuffle(GameCardType cardType)
+    {
+        if (deckRules == null) return null;
+
+        List<GameCard> drawPile = cardType == GameCardType.Potential
+            ? deckRules.potentialDrawDeck
+            : deckRules.actionDrawDeck;
+
+        List<GameCard> discardPile = cardType == GameCardType.Potential
+            ? deckRules.potentialDiscardPile
+            : deckRules.actionDiscardPile;
+
+        if (drawPile == null)
+        {
+            drawPile = new List<GameCard>();
+            if (cardType == GameCardType.Potential) deckRules.potentialDrawDeck = drawPile;
+            else deckRules.actionDrawDeck = drawPile;
+        }
+
+        if (drawPile.Count == 0 && autoReshuffleDiscardsWhenEmpty && discardPile != null && discardPile.Count > 0)
+        {
+            drawPile.AddRange(discardPile);
+            discardPile.Clear();
+            ShuffleCards(drawPile);
+        }
+
+        if (drawPile.Count == 0)
+        {
+            return deckRules.DrawFromDeck(cardType);
+        }
+
+        int lastIdx = drawPile.Count - 1;
+        GameCard drawn = drawPile[lastIdx];
+        drawPile.RemoveAt(lastIdx);
+        return drawn;
+    }
+
+    private void ShuffleCards(List<GameCard> list)
+    {
+        if (list == null) return;
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            GameCard temp = list[i];
+            list[i] = list[j];
+            list[j] = temp;
+        }
     }
 
     void Update()
@@ -285,7 +409,7 @@ public class GameCardManager : MonoBehaviour
                 maxActionCards));
         }
 
-        currentTurn = (Random.value < 0.5f) ? TurnState.PlayerTurn : TurnState.BotTurn;
+        currentTurn = (UnityEngine.Random.value < 0.5f) ? TurnState.PlayerTurn : TurnState.BotTurn;
         turnCounter = 1;
         StartTurn();
     }
@@ -543,7 +667,7 @@ public class GameCardManager : MonoBehaviour
 
         while (playerPotentialHand.Count < potCap && (playerPotentialHand.Count + playerActionHand.Count) < MaxTotalHandCards)
         {
-            GameCard drawn = deckRules.DrawFromDeck(GameCardType.Potential);
+            GameCard drawn = DrawCardWithAutoReshuffle(GameCardType.Potential);
             if (drawn == null) break;
             drawn.drawnOnTurn = drawTurnTag;
             playerPotentialHand.Add(drawn);
@@ -553,7 +677,7 @@ public class GameCardManager : MonoBehaviour
 
         while (playerActionHand.Count < actCap && (playerPotentialHand.Count + playerActionHand.Count) < MaxTotalHandCards)
         {
-            GameCard drawn = deckRules.DrawFromDeck(GameCardType.Action);
+            GameCard drawn = DrawCardWithAutoReshuffle(GameCardType.Action);
             if (drawn == null) break;
 
             if (drawn.cardName == "Tetrodotoxin")
