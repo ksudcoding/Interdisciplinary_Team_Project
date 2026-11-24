@@ -56,26 +56,33 @@ public class GameCardManager : MonoBehaviour
 
     private static readonly (string name, GameCardType type, int count)[] ExactDeckCounts =
     {
-        // Potential cards (122)
-        ("Propagation", GameCardType.Potential, 24),
-        ("Strong stimulus", GameCardType.Potential, 12),
-        ("Na+ open", GameCardType.Potential, 18),
-        ("Na+ closed", GameCardType.Potential, 14),
-        ("Na+ inactive", GameCardType.Potential, 14),
-        ("K+ open", GameCardType.Potential, 26),
-        ("K+ closed", GameCardType.Potential, 14),
+        ("Propagation", GameCardType.Potential, 1),
+        ("Strong stimulus", GameCardType.Potential, 1),
+        ("Na+ open", GameCardType.Potential, 1),
+        ("Na+ Channel Open Peach", GameCardType.Potential, 1),
+        ("Na+ closed", GameCardType.Potential, 1),
+        ("Na+ Channel Closed Blue", GameCardType.Potential, 1),
+        ("Na+ inactive", GameCardType.Potential, 1),
+        ("K+ open", GameCardType.Potential, 1),
+        ("K+ Channel Open Magenta", GameCardType.Potential, 1),
+        ("K+ closed", GameCardType.Potential, 1),
+        ("K+ Channel Closed", GameCardType.Potential, 1),
 
-        // Action cards (61)
-        ("Tetrodotoxin", GameCardType.Action, 6),
-        ("Caffeine", GameCardType.Action, 8),
-        ("Alcohol", GameCardType.Action, 8),
-        ("Large axon", GameCardType.Action, 9),
-        ("Narrow axon", GameCardType.Action, 4),
-        ("Myelinated axon", GameCardType.Action, 9),
-        ("Demyelinated axon", GameCardType.Action, 4),
-        ("Weak stimulus", GameCardType.Action, 6),
-        ("Absolute refractory period", GameCardType.Action, 4),
-        ("Relative refractory period", GameCardType.Action, 4)
+        ("Weak stimulus", GameCardType.Action, 1),
+        ("Caffeine", GameCardType.Action, 1),
+        ("Alcohol", GameCardType.Action, 1),
+        ("Tetrodotoxin", GameCardType.Action, 1),
+        ("Absolute refractory period", GameCardType.Action, 1),
+        ("Absolute Refractory Pink", GameCardType.Action, 1),
+        ("Relative refractory period", GameCardType.Action, 1),
+        ("Myelinated axon", GameCardType.Action, 1),
+        ("Yellow Myelinated Axon", GameCardType.Action, 1),
+        ("Demyelinated axon", GameCardType.Action, 1),
+        ("Yellow Demyelinated Axon", GameCardType.Action, 1),
+        ("Large axon", GameCardType.Action, 1),
+        ("Yellow Large Axon", GameCardType.Action, 1),
+        ("Narrow axon", GameCardType.Action, 1),
+        ("Yellow Narrow Axon", GameCardType.Action, 1)
     };
 
     void Awake()
@@ -106,7 +113,7 @@ public class GameCardManager : MonoBehaviour
         StartCoroutine(SetupGameRoutine());
     }
 
-    [ContextMenu("Build Exact Table Decks (122 Potential / 61 Action) & Shuffle")]
+    [ContextMenu("Build Exact Table Decks (11 Potential / 15 Action) & Shuffle")]
     public void BuildExactTableDecksAndShuffle()
     {
         if (deckRules == null) return;
@@ -193,6 +200,67 @@ public class GameCardManager : MonoBehaviour
             list[i] = list[j];
             list[j] = temp;
         }
+    }
+
+    private static bool IsStartingCardName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        return name.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool MatchesRequiredPotentialCard(string playedName, string requiredName)
+    {
+        if (string.IsNullOrWhiteSpace(playedName) || string.IsNullOrWhiteSpace(requiredName))
+            return false;
+
+        if (playedName.Equals(requiredName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (requiredName.Equals("Na+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return playedName.Equals("Na+ open", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Open Pink", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Open Peach", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (requiredName.Equals("Na+ Channel OPEN AND K+ Channel CLOSED", StringComparison.OrdinalIgnoreCase))
+        {
+            return playedName.Equals("Na+ open", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Open Pink", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Open Peach", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ closed", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Closed", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (requiredName.Equals("Na+ Channel INACTIVE AND K+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return playedName.Equals("Na+ inactive", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Inactive Magenta", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ open", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Open Blue", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (requiredName.Equals("Na+ Channel CLOSED AND K+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return playedName.Equals("Na+ closed", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Closed Blue", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ open", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Open Blue", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (requiredName.Equals("Na+ Channel CLOSED AND K+ Channel CLOSED", StringComparison.OrdinalIgnoreCase))
+        {
+            return playedName.Equals("Na+ closed", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("Na+ Channel Closed Blue", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ closed", StringComparison.OrdinalIgnoreCase) ||
+                   playedName.Equals("K+ Channel Closed", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 
     void Update()
@@ -338,7 +406,7 @@ public class GameCardManager : MonoBehaviour
 
         if (currentIndex == 0)
         {
-            if (cardName == "Weak Stimulus" || cardName == "Strong Stimulus" || cardName == "Potential Joker") return true;
+            if (IsStartingCardName(cardName)) return true;
             reason = "need Weak/Strong Stim";
             return false;
         }
@@ -380,10 +448,10 @@ public class GameCardManager : MonoBehaviour
 
         if (matchedCard.type == GameCardType.Potential)
         {
-            if (cardName == "Weak Stimulus") { reason = "Hillock start only"; return false; }
-            if (cardName == "Potential Joker") return true;
+            if (cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase)) { reason = "Hillock start only"; return false; }
+            if (cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase)) return true;
             string required = deckRules.GetRequiredPotentialCardForNextSpace(nextStage);
-            if (cardName != required) { reason = $"need {required}"; return false; }
+            if (!MatchesRequiredPotentialCard(cardName, required)) { reason = $"need {required}"; return false; }
             return true;
         }
 
@@ -490,14 +558,15 @@ public class GameCardManager : MonoBehaviour
 
         if (currentIndex == 0)
         {
-            if (card.cardName == "Weak Stimulus")
+            if (card.cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase))
             {
                 playerPositionScript.targetIndex = Mathf.Min(deckRules.startIndex, maxIdx);
                 playerLockedFromForwardMoveThisTurn = true;
                 ConsumePlayedCard(card, visualObj, true);
                 BeginMoveLock();
             }
-            else if (card.cardName == "Strong Stimulus" || card.cardName == "Potential Joker")
+            else if (card.cardName.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase) ||
+                     card.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase))
             {
                 playerPositionScript.targetIndex = Mathf.Min(deckRules.startIndex, maxIdx);
                 ConsumePlayedCard(card, visualObj, true);

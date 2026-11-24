@@ -518,29 +518,41 @@ MonoBehaviour:
     artworkTexture: {fileID: 2800000, guid: 8761dd2267534c64fb3eaf0b6b260bc0, type: 3}
   - cardName: Yellow Narrow Axon
     artworkTexture: {fileID: 2800000, guid: 3429433007cd2a8418763a0267c90178, type: 3}
+  - cardName: K+ closed
+    artworkTexture: {fileID: 2800000, guid: 726bde5f9bc79b049980b5a758c0852a, type: 3}
   - cardName: K+ Channel Closed
     artworkTexture: {fileID: 2800000, guid: 726bde5f9bc79b049980b5a758c0852a, type: 3}
+  - cardName: K+ open
+    artworkTexture: {fileID: 2800000, guid: 005354ecfd3c23c41b87c60dd170edb2, type: 3}
   - cardName: K+ Channel Open Blue
     artworkTexture: {fileID: 2800000, guid: b98728280d26af44d883bc42b18efaa4, type: 3}
   - cardName: K+ Channel Open Magenta
     artworkTexture: {fileID: 2800000, guid: 005354ecfd3c23c41b87c60dd170edb2, type: 3}
+  - cardName: Na+ inactive
+    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ Channel Inactive Magenta
+    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ closed
+    artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
   - cardName: Na+ Channel Closed
     artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
   - cardName: Na+ Channel Closed Blue
     artworkTexture: {fileID: 2800000, guid: 3915e142993a8a948812cb7f06a6690e, type: 3}
-  - cardName: Na+ Channel Inactive Magenta
-    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ open
+    artworkTexture: {fileID: 2800000, guid: d78dcda021c45d64e96ec6ae4aac08b7, type: 3}
   - cardName: Na+ Channel Open
-    artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
+    artworkTexture: {fileID: 2800000, guid: d78dcda021c45d64e96ec6ae4aac08b7, type: 3}
+  - cardName: Na+ Channel Open Pink
+    artworkTexture: {fileID: 2800000, guid: d78dcda021c45d64e96ec6ae4aac08b7, type: 3}
   - cardName: Na+ Channel Open Peach
     artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
-  - cardName: Na+ Inact / K+ Open
-    artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
+  - cardName: Na+ Channel OPEN AND K+ Channel CLOSED
+    artworkTexture: {fileID: 2800000, guid: d78dcda021c45d64e96ec6ae4aac08b7, type: 3}
   - cardName: Na+ Channel INACTIVE AND K+ Channel OPEN
     artworkTexture: {fileID: 2800000, guid: 52b67e34611e0cf41acf874176599c12, type: 3}
-  - cardName: Na+ Open / K+ Closed
-    artworkTexture: {fileID: 2800000, guid: e9badf9d8e904a442b5b195d3c6edcb6, type: 3}
-  - cardName: Na+ Closed / K+
+  - cardName: Na+ Channel CLOSED AND K+ Channel OPEN
+    artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
+  - cardName: Na+ Channel CLOSED AND K+ Channel CLOSED
     artworkTexture: {fileID: 2800000, guid: 27ab5f0cd3bacf34d9318eb311c9fab8, type: 3}
 --- !u!1 &8889210538588924076
 GameObject:

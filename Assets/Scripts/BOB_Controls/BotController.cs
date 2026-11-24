@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -152,21 +153,27 @@ public class BotController : MonoBehaviour
         transform.position = targetPos;
     }
 
+    private static bool IsBobStartingCard(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        return name.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase);
+    }
+
     bool CanBobPlayPotentialCard(GameCard card, int idx, BoardStage nextStage, bool lockedFromForwardMove, out int resultingTargetIndex)
     {
         resultingTargetIndex = idx;
         if (card == null || gameCardManager == null || gameCardManager.deckRules == null || positions == null || positions.Length == 0)
             return false;
 
-        if (card.drawnOnTurn == bobTurnCounter)
-            return false;
-
         int maxIdx = positions.Length - 1;
         int nextIdx = Mathf.Min(idx + 1, maxIdx);
 
+        // Allow starting cards on index 0 immediately, even if drawn on the current turn
         if (idx == 0)
         {
-            if (card.cardName == "Weak Stimulus" || card.cardName == "Strong Stimulus" || card.cardName == "Potential Joker")
+            if (IsBobStartingCard(card.cardName))
             {
                 resultingTargetIndex = Mathf.Min(gameCardManager.deckRules.startIndex, maxIdx);
                 return true;
@@ -174,20 +181,23 @@ public class BotController : MonoBehaviour
             return false;
         }
 
+        if (card.drawnOnTurn == bobTurnCounter)
+            return false;
+
         if (lockedFromForwardMove)
             return false;
 
-        if (card.cardName == "Weak Stimulus")
+        if (card.cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        if (card.cardName == "Potential Joker")
+        if (card.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase))
         {
             resultingTargetIndex = nextIdx;
             return true;
         }
 
         string required = gameCardManager.deckRules.GetRequiredPotentialCardForNextSpace(nextStage);
-        if (card.cardName == required)
+        if (card.cardName.Equals(required, StringComparison.OrdinalIgnoreCase))
         {
             resultingTargetIndex = nextIdx;
             return true;
@@ -280,7 +290,7 @@ public class BotController : MonoBehaviour
             if (CanBobPlayPotentialCard(card, idx, nextStage, lockedFromForwardMove, out nextTarget))
             {
                 targetIndex = nextTarget;
-                if (card.cardName == "Weak Stimulus")
+                if (card.cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase))
                     lockedFromForwardMove = true;
 
                 Debug.Log($"Bob played {card.cardName}");

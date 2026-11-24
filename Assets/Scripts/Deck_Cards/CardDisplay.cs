@@ -27,11 +27,9 @@ public class CardDisplay : MonoBehaviour
 
     private readonly HashSet<string> warnedMissingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    // Maps gameplay card/state names (and common variants) to exact filenames in your Cards folder
     private static readonly Dictionary<string, string[]> CardAliasesToFileKeys =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            // Stimuli & Jokers
             { "Weak Stimulus", new[] { "WEAK STIM (STARTER CARD)" } },
             { "Weak Stim", new[] { "WEAK STIM (STARTER CARD)" } },
             { "Strong Stimulus", new[] { "strong stimulus joker card yellow" } },
@@ -43,50 +41,49 @@ public class CardDisplay : MonoBehaviour
             { "Propagation Joker", new[] { "propagation card joker yellow" } },
             { "Propagation", new[] { "propagation card joker yellow" } },
 
-            // Consumables / Action Cards
             { "Alcohol", new[] { "ALCAHOL" } },
             { "Alcahol", new[] { "ALCAHOL" } },
             { "Coffee", new[] { "COFFEE" } },
             { "Caffeine", new[] { "COFFEE" } },
             { "Tetrodotoxin", new[] { "TETRODOXIN (DEATH)" } },
 
-            // Refractory Periods
             { "Absolute Refractory Period", new[] { "ABSOLUTE REFRAC", "ABSOLUTE REFRAC PINK" } },
             { "Abs Refractory", new[] { "ABSOLUTE REFRAC", "ABSOLUTE REFRAC PINK" } },
-            { "Absolute Refractory Pink", new[] { "ABSOLUTE REFRAC PINK", "ABSOLUTE REFRAC" } },
+            { "Absolute Refractory Pink", new[] { "ABSOLUTE REFRAC PINK" } },
             { "Relative Refractory Period", new[] { "RELATIVE REFRAC BLUE" } },
             { "Rel Refractory", new[] { "RELATIVE REFRAC BLUE" } },
             { "Relative Refractory Blue", new[] { "RELATIVE REFRAC BLUE" } },
 
-            // Axons
-            { "Myelinated Axon", new[] { "MYELINATE AXON", "yellow myelinated axon" } },
-            { "Myelinated", new[] { "MYELINATE AXON", "yellow myelinated axon" } },
-            { "Yellow Myelinated Axon", new[] { "yellow myelinated axon", "MYELINATE AXON" } },
-            { "Demyelinated Axon", new[] { "DEMYELINATED AXON", "yellow demyelianted axon" } },
-            { "Demyelinated", new[] { "DEMYELINATED AXON", "yellow demyelianted axon" } },
-            { "Yellow Demyelinated Axon", new[] { "yellow demyelianted axon", "DEMYELINATED AXON" } },
-            { "Large Axon", new[] { "LARGE AXON", "yellow alrge axon" } },
-            { "Yellow Large Axon", new[] { "yellow alrge axon", "LARGE AXON" } },
-            { "Narrow Axon", new[] { "NARROW AXON", "ywllow narrow axon" } },
-            { "Yellow Narrow Axon", new[] { "ywllow narrow axon", "NARROW AXON" } },
+            { "Myelinated Axon", new[] { "MYELINATE AXON" } },
+            { "Myelinated", new[] { "MYELINATE AXON" } },
+            { "Yellow Myelinated Axon", new[] { "yellow myelinated axon" } },
+            { "Demyelinated Axon", new[] { "DEMYELINATED AXON" } },
+            { "Demyelinated", new[] { "DEMYELINATED AXON" } },
+            { "Yellow Demyelinated Axon", new[] { "yellow demyelianted axon" } },
+            { "Large Axon", new[] { "LARGE AXON" } },
+            { "Yellow Large Axon", new[] { "yellow alrge axon" } },
+            { "Narrow Axon", new[] { "NARROW AXON" } },
+            { "Yellow Narrow Axon", new[] { "ywllow narrow axon" } },
 
-            // K+ Channels
+            { "K+ closed", new[] { "k+ channel closed", "k+channel closed" } },
             { "K+ Channel Closed", new[] { "k+ channel closed", "k+channel closed" } },
+            { "K+ open", new[] { "k + channel open magenta", "k+ channel open blue" } },
             { "K+ Channel Open Blue", new[] { "k+ channel open blue" } },
             { "K+ Channel Open Magenta", new[] { "k + channel open magenta" } },
 
-            // Na+ Channels & Combined Channel Strings
             { "Na+ inactive", new[] { "na+ channel inactive magenta" } },
+            { "Na+ Channel Inactive Magenta", new[] { "na+ channel inactive magenta" } },
+            { "Na+ closed", new[] { "na+ channel closed" } },
             { "Na+ Channel Closed", new[] { "na+ channel closed" } },
             { "Na+ Channel Closed Blue", new[] { "na+ channel closed blue" } },
-            { "Na+ Channel Inactive Magenta", new[] { "na+ channel inactive magenta" } },
-            { "Na+ Channel Open", new[] { "na+ channel open pink", "na channel open peacch" } },
-            { "Na+ Channel Open Pink", new[] { "na+ channel open pink" } },
+            { "Na+ open", new[] { "na channel open pink", "na channel open peacch" } },
+            { "Na+ Channel Open", new[] { "na channel open pink", "na channel open peacch" } },
+            { "Na+ Channel Open Pink", new[] { "na channel open pink" } },
             { "Na+ Channel Open Peach", new[] { "na channel open peacch" } },
-            { "Na+ Inact / K+ Open", new[] { "na+ channel inactive magenta", "k+ channel open blue", "k + channel open magenta" } },
-            { "Na+ Channel INACTIVE AND K+ Channel OPEN", new[] { "na+ channel inactive magenta", "k+ channel open blue", "k + channel open magenta" } },
-            { "Na+ Open / K+ Closed", new[] { "na+ channel open pink", "na channel open peacch", "k+ channel closed", "k+channel closed" } },
-            { "Na+ Closed / K+", new[] { "na+ channel closed", "na+ channel closed blue", "k+ channel open blue" } }
+            { "Na+ Channel OPEN AND K+ Channel CLOSED", new[] { "na channel open pink", "na channel open peacch" } },
+            { "Na+ Channel INACTIVE AND K+ Channel OPEN", new[] { "na+ channel inactive magenta", "k + channel open magenta" } },
+            { "Na+ Channel CLOSED AND K+ Channel OPEN", new[] { "na+ channel closed", "k+ channel open blue" } },
+            { "Na+ Channel CLOSED AND K+ Channel CLOSED", new[] { "na+ channel closed", "k+ channel closed" } }
         };
 
     public void SetCardName(string nameToSet)
@@ -136,7 +133,6 @@ public class CardDisplay : MonoBehaviour
 
         string targetNorm = NormalizeKey(lookupName);
 
-        // 1. Exact match in Inspector list
         if (cardArtworks != null)
         {
             for (int i = 0; i < cardArtworks.Count; i++)
@@ -150,33 +146,28 @@ public class CardDisplay : MonoBehaviour
                 }
             }
 
-            // 2. Partial match against Inspector list entries
             for (int i = 0; i < cardArtworks.Count; i++)
             {
                 CardArtworkEntry entry = cardArtworks[i];
                 if (!string.IsNullOrWhiteSpace(entry.cardName) && entry.artworkTexture != null)
                 {
                     string entryNorm = NormalizeKey(entry.cardName);
-                    if (entryNorm.Contains(targetNorm) || targetNorm.Contains(entryNorm))
+                    if (entryNorm == targetNorm)
                         return entry.artworkTexture;
                 }
             }
         }
 
-        // 3. Fallback to alias map (checks if lookupName contains or is contained by a known key)
-        foreach (KeyValuePair<string, string[]> pair in CardAliasesToFileKeys)
+        if (CardAliasesToFileKeys.TryGetValue(lookupName.Trim(), out string[] aliasKeys) && cardArtworks != null)
         {
-            string aliasKeyNorm = NormalizeKey(pair.Key);
-            if (targetNorm.Contains(aliasKeyNorm) || aliasKeyNorm.Contains(targetNorm))
+            for (int a = 0; a < aliasKeys.Length; a++)
             {
-                if (cardArtworks != null)
+                string aliasKeyNorm = NormalizeKey(aliasKeys[a]);
+                for (int i = 0; i < cardArtworks.Count; i++)
                 {
-                    for (int i = 0; i < cardArtworks.Count; i++)
-                    {
-                        CardArtworkEntry entry = cardArtworks[i];
-                        if (entry.artworkTexture != null && NormalizeKey(entry.cardName) == aliasKeyNorm)
-                            return entry.artworkTexture;
-                    }
+                    CardArtworkEntry entry = cardArtworks[i];
+                    if (entry.artworkTexture != null && NormalizeKey(entry.cardName) == aliasKeyNorm)
+                        return entry.artworkTexture;
                 }
             }
         }
