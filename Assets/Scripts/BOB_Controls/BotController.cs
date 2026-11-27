@@ -68,6 +68,10 @@ public class BotController : MonoBehaviour
     public Transform bobHandHolder;
     public GameObject bobCardPrefab;
 
+    [Header("Bob Hand Visuals")]
+    [Tooltip("Multiplier on the card size/spacing copied from the player hand.")]
+    public float bobCardScale = 1f;
+
     [Header("Board Position Status")]
     public int currentIndex = 0;
     public int targetIndex = 0;
@@ -88,6 +92,12 @@ public class BotController : MonoBehaviour
     {
         if (gameCardManager == null)
             gameCardManager = FindAnyObjectByType<GameCardManager>();
+
+        if (bobHandHolder == null)
+        {
+            GameObject marker = GameObject.Find("BobsHandPos");
+            if (marker != null) bobHandHolder = marker.transform;
+        }
 
         if (bobPotentialHand == null) bobPotentialHand = new List<GameCard>();
         if (bobActionHand == null) bobActionHand = new List<GameCard>();
@@ -161,6 +171,31 @@ public class BotController : MonoBehaviour
                name.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool NameIs(string a, string b)
+    {
+        return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSlowdownCard(string n)
+    {
+        return NameIs(n, "Alcohol") ||
+               NameIs(n, "Absolute refractory period") ||
+               NameIs(n, "Absolute Refractory Pink") ||
+               NameIs(n, "Relative refractory period") ||
+               NameIs(n, "Demyelinated axon") ||
+               NameIs(n, "Yellow Demyelinated Axon") ||
+               NameIs(n, "Narrow axon") ||
+               NameIs(n, "Yellow Narrow Axon");
+    }
+
+    private static bool IsAxonBoostCard(string n)
+    {
+        return NameIs(n, "Myelinated axon") ||
+               NameIs(n, "Yellow Myelinated Axon") ||
+               NameIs(n, "Large axon") ||
+               NameIs(n, "Yellow Large Axon");
+    }
+
     bool CanBobPlayPotentialCard(GameCard card, int idx, BoardStage nextStage, bool lockedFromForwardMove, out int resultingTargetIndex)
     {
         resultingTargetIndex = idx;
@@ -170,12 +205,15 @@ public class BotController : MonoBehaviour
         int maxIdx = positions.Length - 1;
         int nextIdx = Mathf.Min(idx + 1, maxIdx);
 
-        // Allow starting cards on index 0 immediately, even if drawn on the current turn
+        // Starting cards are handled by the opener in ExecuteBotTurnLogic
         if (idx == 0)
         {
             if (IsBobStartingCard(card.cardName))
             {
-                resultingTargetIndex = Mathf.Min(gameCardManager.deckRules.startIndex, maxIdx);
+                int extraSpaces = NameIs(card.cardName, "Strong stimulus")
+                    ? Mathf.Max(0, gameCardManager.strongStimulusExtraSpaces)
+                    : 0;
+                resultingTargetIndex = Mathf.Min(gameCardManager.deckRules.startIndex + extraSpaces, maxIdx);
                 return true;
             }
             return false;
@@ -187,17 +225,17 @@ public class BotController : MonoBehaviour
         if (lockedFromForwardMove)
             return false;
 
-        if (card.cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase))
+        if (NameIs(card.cardName, "Weak stimulus"))
             return false;
 
-        if (card.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase))
+        if (NameIs(card.cardName, "Potential Joker"))
         {
             resultingTargetIndex = nextIdx;
             return true;
         }
 
         string required = gameCardManager.deckRules.GetRequiredPotentialCardForNextSpace(nextStage);
-        if (card.cardName.Equals(required, StringComparison.OrdinalIgnoreCase))
+        if (GameCardManager.MatchesRequiredPotentialCard(card.cardName, required))
         {
             resultingTargetIndex = nextIdx;
             return true;
@@ -219,7 +257,7 @@ public class BotController : MonoBehaviour
         int maxIdx = positions.Length - 1;
         CardDeckAndRules rules = gameCardManager.deckRules;
 
-        if (card.cardName == "Caffeine")
+        if (NameIs(card.cardName, "Caffeine"))
         {
             if (lockedFromForwardMove || idx == 0) return false;
             if (currentStage != BoardStage.PinkThreshold || nextStage != BoardStage.PinkThreshold) return false;
@@ -229,7 +267,7 @@ public class BotController : MonoBehaviour
             return true;
         }
 
-        if (card.cardName == "Myelinated Axon" || card.cardName == "Large Axon")
+        if (IsAxonBoostCard(card.cardName))
         {
             if (lockedFromForwardMove || idx == 0) return false;
             if (nextStage != BoardStage.YellowPTrack) return false;
@@ -237,7 +275,7 @@ public class BotController : MonoBehaviour
             for (int p = 0; p < bobPotentialHand.Count; p++)
             {
                 GameCard prop = bobPotentialHand[p];
-                if (prop != null && (prop.cardName == "Propagation" || prop.cardName == "Potential Joker") && prop.drawnOnTurn != bobTurnCounter)
+                if (prop != null && (NameIs(prop.cardName, "Propagation") || NameIs(prop.cardName, "Potential Joker")) && prop.drawnOnTurn != bobTurnCounter)
                 {
                     pairedPropIndex = p;
                     resultingTargetIndex = Mathf.Min(idx + 2, maxIdx);
@@ -247,9 +285,7 @@ public class BotController : MonoBehaviour
             return false;
         }
 
-        if (card.cardName == "Alcohol" || card.cardName == "Absolute Refractory Period" ||
-            card.cardName == "Relative Refractory Period" || card.cardName == "Demyelinated Axon" ||
-            card.cardName == "Narrow Axon")
+        if (IsSlowdownCard(card.cardName))
         {
             if (gameCardManager.playerPositionScript == null) return false;
             BoardStage playerStage = rules.GetStageAtIndex(gameCardManager.playerPositionScript.currentIndex);
@@ -274,6 +310,75 @@ public class BotController : MonoBehaviour
         CardDeckAndRules rules = gameCardManager.deckRules;
         int maxIdx = positions.Length - 1;
 
+        // ---- OPENER: while Bob is still on the start space he must play his stimulus first ----
+        while (isMoving) yield return null;
+
+        if (currentIndex == 0)
+        {
+            GameCard starter = null;
+            bool starterIsAction = false;
+
+            // Prefer Strong stimulus / Joker (Potential), then Weak stimulus (Action)
+            for (int p = 0; p < bobPotentialHand.Count; p++)
+            {
+                if (bobPotentialHand[p] != null && IsBobStartingCard(bobPotentialHand[p].cardName))
+                {
+                    starter = bobPotentialHand[p];
+                    break;
+                }
+            }
+
+            if (starter == null)
+            {
+                for (int a = 0; a < bobActionHand.Count; a++)
+                {
+                    if (bobActionHand[a] != null && IsBobStartingCard(bobActionHand[a].cardName))
+                    {
+                        starter = bobActionHand[a];
+                        starterIsAction = true;
+                        break;
+                    }
+                }
+            }
+
+            if (starter != null)
+            {
+                int extraSpaces = NameIs(starter.cardName, "Strong stimulus")
+                    ? Mathf.Max(0, gameCardManager.strongStimulusExtraSpaces)
+                    : 0;
+                targetIndex = Mathf.Min(rules.startIndex + extraSpaces, maxIdx);
+
+                if (starterIsAction)
+                {
+                    bobActionHand.Remove(starter);
+                    if (actionDiscard != null) actionDiscard.Add(starter);
+                    madeAnyActionPlay = true;
+                }
+                else
+                {
+                    bobPotentialHand.Remove(starter);
+                    if (potentialDiscard != null) potentialDiscard.Add(starter);
+                    madeAnyPotentialPlay = true;
+                }
+
+                // Weak stimulus locks forward movement for the rest of the turn (same rule as the player)
+                if (NameIs(starter.cardName, "Weak stimulus"))
+                    lockedFromForwardMove = true;
+
+                gameCardManager.SendChatMessage($"Bob played {starter.cardName}");
+                UpdateBobVisualHand();
+                yield return new WaitForSeconds(0.7f);
+
+                float safety = 12f;
+                while ((isMoving || currentIndex != targetIndex) && safety > 0f)
+                {
+                    safety -= Time.deltaTime;
+                    yield return null;
+                }
+            }
+        }
+
+        // ---- Potential cards ----
         for (int i = bobPotentialHand.Count - 1; i >= 0; i--)
         {
             while (isMoving) yield return null;
@@ -290,7 +395,7 @@ public class BotController : MonoBehaviour
             if (CanBobPlayPotentialCard(card, idx, nextStage, lockedFromForwardMove, out nextTarget))
             {
                 targetIndex = nextTarget;
-                if (card.cardName.Equals("Weak stimulus", StringComparison.OrdinalIgnoreCase))
+                if (NameIs(card.cardName, "Weak stimulus"))
                     lockedFromForwardMove = true;
 
                 Debug.Log($"Bob played {card.cardName}");
@@ -303,6 +408,7 @@ public class BotController : MonoBehaviour
             }
         }
 
+        // ---- Action cards ----
         for (int i = bobActionHand.Count - 1; i >= 0; i--)
         {
             while (isMoving) yield return null;
@@ -320,7 +426,7 @@ public class BotController : MonoBehaviour
             int pairedPropIdx;
             if (CanBobPlayActionCard(card, idx, currentStage, nextStage, lockedFromForwardMove, out nextTarget, out pairedPropIdx))
             {
-                if (card.cardName == "Caffeine" || card.cardName == "Myelinated Axon" || card.cardName == "Large Axon")
+                if (NameIs(card.cardName, "Caffeine") || IsAxonBoostCard(card.cardName))
                 {
                     string propName = string.Empty;
                     if (pairedPropIdx >= 0 && pairedPropIdx < bobPotentialHand.Count)
@@ -329,7 +435,6 @@ public class BotController : MonoBehaviour
                         propName = propCard != null ? propCard.cardName : string.Empty;
                         bobPotentialHand.RemoveAt(pairedPropIdx);
                         if (potentialDiscard != null && propCard != null) potentialDiscard.Add(propCard);
-                        if (pairedPropIdx < i) i--;
                     }
 
                     targetIndex = nextTarget;
@@ -395,16 +500,16 @@ public class BotController : MonoBehaviour
     {
         if (gameCardManager == null || gameCardManager.playerPositionScript == null || gameCardManager.deckRules == null) return;
 
-        if (cardName == "Alcohol")
+        if (NameIs(cardName, "Alcohol"))
         {
             var playerPos = gameCardManager.playerPositionScript;
             playerPos.targetIndex = Mathf.Max(playerPos.currentIndex - 2, gameCardManager.deckRules.startIndex);
             Debug.LogWarning("Bob pushed you back 2");
         }
-        else if (cardName == "Relative Refractory Period")
+        else if (NameIs(cardName, "Relative refractory period"))
         {
             bool playerHasStrongStim = gameCardManager.playerPotentialHand != null &&
-                                       gameCardManager.playerPotentialHand.Exists(c => c != null && c.cardName == "Strong Stimulus");
+                                       gameCardManager.playerPotentialHand.Exists(c => c != null && NameIs(c.cardName, "Strong stimulus"));
             if (!playerHasStrongStim && !gameCardManager.playerSkipNextTurn)
             {
                 gameCardManager.playerSkipNextTurn = true;
@@ -453,7 +558,7 @@ public class BotController : MonoBehaviour
             GameCard drawn = DrawForBob(GameCardType.Action, rules);
             if (drawn == null) break;
 
-            if (drawn.cardName == "Tetrodotoxin")
+            if (NameIs(drawn.cardName, "Tetrodotoxin"))
             {
                 bobTetrodotoxinCount++;
                 if (rules.actionDiscardPile != null) rules.actionDiscardPile.Add(drawn);
@@ -493,40 +598,117 @@ public class BotController : MonoBehaviour
         if (cardInstance != null) Destroy(cardInstance);
     }
 
-    void UpdateBobVisualHand()
-    {
-        foreach (var card in activeBobVisualCards)
-            if (card != null) Destroy(card);
-        activeBobVisualCards.Clear();
+    // Bob's physical cards live in fixed slots so they never shuffle or re-centre
+    private GameObject[] bobSlotObjects = new GameObject[0];
+    private GameCard[] bobSlotCards = new GameCard[0];
 
+    /// <summary>
+    /// Syncs Bob's physical cards with his hand data at BobsHandPos.
+    /// Cards that are still in his hand are NOT touched or moved. Played/discarded cards are
+    /// removed from their slot, and new cards are placed in the first empty slot.
+    /// </summary>
+    public void UpdateBobVisualHand()
+    {
+        if (gameCardManager == null)
+            gameCardManager = FindAnyObjectByType<GameCardManager>();
         if (gameCardManager == null) return;
 
         List<GameCard> allBobCards = new List<GameCard>();
-        allBobCards.AddRange(bobPotentialHand);
-        allBobCards.AddRange(bobActionHand);
+        foreach (GameCard c in bobPotentialHand) if (c != null) allBobCards.Add(c);
+        foreach (GameCard c in bobActionHand) if (c != null) allBobCards.Add(c);
 
-        float spacing = 2.0f;
-        for (int i = 0; i < allBobCards.Count; i++)
+        int slotCount = Mathf.Max(gameCardManager.MaxTotalHandCards, allBobCards.Count);
+
+        // Slot count only changes if hand limits change: start fresh in that case
+        if (bobSlotObjects.Length != slotCount)
         {
-            GameCard cardData = allBobCards[i];
-            if (cardData == null) continue;
-
-            GameObject prefabToUse = (bobCardPrefab != null) ? bobCardPrefab : gameCardManager.defaultUICardPrefab;
-            if (prefabToUse == null) continue;
-
-            Vector3 basePos = (bobHandHolder != null) ? bobHandHolder.position : transform.position + new Vector3(0, 0, 3f);
-            Vector3 targetPos = basePos + new Vector3((i - ((allBobCards.Count - 1) / 2.0f)) * spacing, 0f, 0f);
-
-            GameObject cardInstance = Instantiate(prefabToUse, targetPos, Quaternion.identity);
-            cardInstance.name = $"BOBS_CARD_{cardData.cardName}";
-
-            CardDisplay display = cardInstance.GetComponent<CardDisplay>();
-            if (display != null) display.SetCardName(cardData.cardName);
-
-            if (bobHandHolder != null)
-                cardInstance.transform.SetParent(bobHandHolder, true);
-
-            activeBobVisualCards.Add(cardInstance);
+            foreach (GameObject old in bobSlotObjects)
+                if (old != null) Destroy(old);
+            bobSlotObjects = new GameObject[slotCount];
+            bobSlotCards = new GameCard[slotCount];
         }
+
+        // 1. Remove visuals for cards that left Bob's hand (leave the slot empty)
+        for (int i = 0; i < slotCount; i++)
+        {
+            if (bobSlotCards[i] != null && !allBobCards.Contains(bobSlotCards[i]))
+            {
+                if (bobSlotObjects[i] != null) Destroy(bobSlotObjects[i]);
+                bobSlotObjects[i] = null;
+                bobSlotCards[i] = null;
+            }
+        }
+
+        // 2. Place any new cards into the first empty slot
+        foreach (GameCard card in allBobCards)
+        {
+            if (Array.IndexOf(bobSlotCards, card) >= 0) continue;
+
+            int slot = -1;
+            for (int i = 0; i < slotCount; i++)
+            {
+                if (bobSlotCards[i] == null) { slot = i; break; }
+            }
+            if (slot < 0) break;
+
+            GameObject spawned = SpawnBobCardInSlot(card, slot, slotCount);
+            if (spawned == null) return;
+
+            bobSlotCards[slot] = card;
+            bobSlotObjects[slot] = spawned;
+        }
+    }
+
+    private GameObject SpawnBobCardInSlot(GameCard cardData, int slot, int slotCount)
+    {
+        GameObject prefabToUse = (bobCardPrefab != null) ? bobCardPrefab : gameCardManager.defaultUICardPrefab;
+        if (prefabToUse == null)
+        {
+            Debug.LogWarning("[BotController] No bobCardPrefab or defaultUICardPrefab assigned, can't show Bob's cards.");
+            return null;
+        }
+
+        CardSlotManager slots = gameCardManager.cardSlotManager;
+        Vector3 cardScale = (slots != null ? slots.cardScale : Vector3.one) * bobCardScale;
+        Quaternion worldRot = (slots != null)
+            ? slots.transform.rotation * Quaternion.Euler(slots.cardEulerRotation)
+            : Quaternion.identity;
+        Vector3 rightAxis = (slots != null) ? slots.transform.right : Vector3.right;
+        float spacing = ((slots != null) ? slots.cardSpacing : 2.0f) * bobCardScale;
+
+        Vector3 basePos = (bobHandHolder != null) ? bobHandHolder.position : transform.position + new Vector3(0, 0, 3f);
+        Vector3 slotPos = basePos + rightAxis * ((slot - ((slotCount - 1) / 2.0f)) * spacing);
+
+        GameObject cardInstance = Instantiate(prefabToUse, slotPos, worldRot);
+        cardInstance.name = $"BOBS_CARD_{cardData.cardName}";
+
+        // Display-only: no clicking, hovering, physics or animation
+        UICard ui = cardInstance.GetComponent<UICard>();
+        if (ui != null)
+        {
+            ui.enabled = false;
+            Destroy(ui);
+        }
+        CardHover hover = cardInstance.GetComponent<CardHover>();
+        if (hover != null) Destroy(hover);
+
+        foreach (Collider col in cardInstance.GetComponentsInChildren<Collider>())
+            col.enabled = false;
+        foreach (Rigidbody rb in cardInstance.GetComponentsInChildren<Rigidbody>())
+        {
+            rb.useGravity = false;
+            rb.isKinematic = true;
+        }
+        foreach (Animator anim in cardInstance.GetComponentsInChildren<Animator>())
+            anim.enabled = false;
+
+        CardDisplay display = cardInstance.GetComponent<CardDisplay>() ?? cardInstance.GetComponentInChildren<CardDisplay>();
+        if (display != null) display.SetCardName(cardData.cardName);
+
+        if (bobHandHolder != null)
+            cardInstance.transform.SetParent(bobHandHolder, true);
+        cardInstance.transform.localScale = cardScale;
+
+        return cardInstance;
     }
 }

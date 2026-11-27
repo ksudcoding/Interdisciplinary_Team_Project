@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using TMPro;
 
@@ -11,6 +12,13 @@ public class GameCardManager : MonoBehaviour
     public TurnPhase currentPhase = TurnPhase.PlayPhase;
     public int turnCounter = 1;
     public TextMeshPro turnDisplayText;
+
+    [Header("Starting Wheel & Chat Log")]
+    public SpinnerWheel startingWheel;
+    public TextMeshProUGUI chatLogText;
+    public TextMeshPro chatLogWorldText;
+    public bool guaranteeStartingStimulusInHand = true;
+    public bool guaranteeBobStartingStimulusInHand = true;
 
     [Header("Input Blocking")]
     public GameObject playStopper;
@@ -35,6 +43,10 @@ public class GameCardManager : MonoBehaviour
     public int maxPotentialCards = 4;
     public int maxActionCards = 2;
 
+    [Header("Stimulus Movement")]
+    [Tooltip("Extra spaces Strong stimulus moves beyond the Weak stimulus start space. 1 = Strong moves 2 spaces total.")]
+    public int strongStimulusExtraSpaces = 1;
+
     [Header("Deck Counts & Reshuffle")]
     public bool applyExactTableCountsOnStart = true;
     public bool autoReshuffleDiscardsWhenEmpty = true;
@@ -51,6 +63,8 @@ public class GameCardManager : MonoBehaviour
     private Coroutine moveWaitCoroutine;
     private readonly System.Random rng = new System.Random();
     private int nextGeneratedCardId = 1;
+    private SpinnerWheel.StartingStimulusChoice rolledPlayerStartingStimulus = SpinnerWheel.StartingStimulusChoice.None;
+    private SpinnerWheel.StartingStimulusChoice rolledBobStartingStimulus = SpinnerWheel.StartingStimulusChoice.None;
 
     public int MaxTotalHandCards => Mathf.Max(0, maxPotentialCards) + Mathf.Max(0, maxActionCards);
 
@@ -93,6 +107,12 @@ public class GameCardManager : MonoBehaviour
 
         if (deckRules == null) deckRules = GetComponent<CardDeckAndRules>() ?? gameObject.AddComponent<CardDeckAndRules>();
         if (discardController == null) discardController = GetComponent<CardDiscardController>() ?? gameObject.AddComponent<CardDiscardController>();
+        if (startingWheel == null) startingWheel = FindAnyObjectByType<SpinnerWheel>();
+        if (cardSlotManager == null) cardSlotManager = FindAnyObjectByType<CardSlotManager>();
+        if (botController == null) botController = FindAnyObjectByType<BotController>();
+
+        if (playerHandHolder == null && cardSlotManager != null)
+            playerHandHolder = cardSlotManager.transform;
 
         discardController.cardManager = this;
         discardController.deckRules = deckRules;
@@ -111,6 +131,29 @@ public class GameCardManager : MonoBehaviour
             }
         }
         StartCoroutine(SetupGameRoutine());
+    }
+
+    public void SendChatMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        Debug.Log(message);
+
+        if (chatLogText != null)
+        {
+            if (string.IsNullOrEmpty(chatLogText.text))
+                chatLogText.text = message;
+            else
+                chatLogText.text += "\n" + message;
+        }
+
+        if (chatLogWorldText != null)
+        {
+            if (string.IsNullOrEmpty(chatLogWorldText.text))
+                chatLogWorldText.text = message;
+            else
+                chatLogWorldText.text += "\n" + message;
+        }
     }
 
     [ContextMenu("Build Exact Table Decks (11 Potential / 15 Action) & Shuffle")]
@@ -210,7 +253,7 @@ public class GameCardManager : MonoBehaviour
                name.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool MatchesRequiredPotentialCard(string playedName, string requiredName)
+    public static bool MatchesRequiredPotentialCard(string playedName, string requiredName)
     {
         if (string.IsNullOrWhiteSpace(playedName) || string.IsNullOrWhiteSpace(requiredName))
             return false;
@@ -221,14 +264,12 @@ public class GameCardManager : MonoBehaviour
         if (requiredName.Equals("Na+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
         {
             return playedName.Equals("Na+ open", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("Na+ Channel Open Pink", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("Na+ Channel Open Peach", StringComparison.OrdinalIgnoreCase);
         }
 
         if (requiredName.Equals("Na+ Channel OPEN AND K+ Channel CLOSED", StringComparison.OrdinalIgnoreCase))
         {
             return playedName.Equals("Na+ open", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("Na+ Channel Open Pink", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("Na+ Channel Open Peach", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("K+ closed", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("K+ Channel Closed", StringComparison.OrdinalIgnoreCase);
@@ -237,10 +278,8 @@ public class GameCardManager : MonoBehaviour
         if (requiredName.Equals("Na+ Channel INACTIVE AND K+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
         {
             return playedName.Equals("Na+ inactive", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("Na+ Channel Inactive Magenta", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("K+ open", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("K+ Channel Open Blue", StringComparison.OrdinalIgnoreCase);
+                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase);
         }
 
         if (requiredName.Equals("Na+ Channel CLOSED AND K+ Channel OPEN", StringComparison.OrdinalIgnoreCase))
@@ -248,8 +287,7 @@ public class GameCardManager : MonoBehaviour
             return playedName.Equals("Na+ closed", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("Na+ Channel Closed Blue", StringComparison.OrdinalIgnoreCase) ||
                    playedName.Equals("K+ open", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase) ||
-                   playedName.Equals("K+ Channel Open Blue", StringComparison.OrdinalIgnoreCase);
+                   playedName.Equals("K+ Channel Open Magenta", StringComparison.OrdinalIgnoreCase);
         }
 
         if (requiredName.Equals("Na+ Channel CLOSED AND K+ Channel CLOSED", StringComparison.OrdinalIgnoreCase))
@@ -311,9 +349,9 @@ public class GameCardManager : MonoBehaviour
     GameCard FindCardInHands(string cardName)
     {
         if (string.IsNullOrEmpty(cardName)) return null;
-        GameCard pot = playerPotentialHand != null ? playerPotentialHand.Find(c => c != null && c.cardName == cardName) : null;
+        GameCard pot = playerPotentialHand != null ? playerPotentialHand.Find(c => c != null && c.cardName.Equals(cardName, StringComparison.OrdinalIgnoreCase)) : null;
         if (pot != null) return pot;
-        return playerActionHand != null ? playerActionHand.Find(c => c != null && c.cardName == cardName) : null;
+        return playerActionHand != null ? playerActionHand.Find(c => c != null && c.cardName.Equals(cardName, StringComparison.OrdinalIgnoreCase)) : null;
     }
 
     public void EnforceHandLimitsAndSyncVisuals()
@@ -411,9 +449,14 @@ public class GameCardManager : MonoBehaviour
             return false;
         }
 
-        if (cardName == "Alcohol" || cardName == "Absolute Refractory Period" ||
-            cardName == "Relative Refractory Period" || cardName == "Demyelinated Axon" ||
-            cardName == "Narrow Axon")
+        if (cardName.Equals("Alcohol", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Absolute refractory period", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Absolute Refractory Pink", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Relative refractory period", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Demyelinated axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Yellow Demyelinated Axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Narrow axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Yellow Narrow Axon", StringComparison.OrdinalIgnoreCase))
         {
             if (botController == null) { reason = "no opponent"; return false; }
             BoardStage bobStage = deckRules.GetStageAtIndex(botController.currentIndex);
@@ -425,23 +468,26 @@ public class GameCardManager : MonoBehaviour
             return true;
         }
 
-        if (playerLockedFromForwardMoveThisTurn && (matchedCard.type == GameCardType.Potential || cardName == "Caffeine"))
+        if (playerLockedFromForwardMoveThisTurn && (matchedCard.type == GameCardType.Potential || cardName.Equals("Caffeine", StringComparison.OrdinalIgnoreCase)))
         {
             reason = "locked after Weak Stim";
             return false;
         }
 
-        if (cardName == "Caffeine")
+        if (cardName.Equals("Caffeine", StringComparison.OrdinalIgnoreCase))
         {
             if (currentStage != BoardStage.PinkThreshold || nextStage != BoardStage.PinkThreshold) { reason = "need Pink stage"; return false; }
             if (currentIndex >= deckRules.lastPinkIndex) { reason = "at -55mV limit"; return false; }
             return true;
         }
 
-        if (cardName == "Myelinated Axon" || cardName == "Large Axon")
+        if (cardName.Equals("Myelinated axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Yellow Myelinated Axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Large axon", StringComparison.OrdinalIgnoreCase) ||
+            cardName.Equals("Yellow Large Axon", StringComparison.OrdinalIgnoreCase))
         {
             if (nextStage != BoardStage.YellowPTrack) { reason = "need Yellow P next"; return false; }
-            GameCard propCard = playerPotentialHand.Find(c => c != null && (c.cardName == "Propagation" || c.cardName == "Potential Joker") && c.drawnOnTurn != turnCounter);
+            GameCard propCard = playerPotentialHand.Find(c => c != null && (c.cardName.Equals("Propagation", StringComparison.OrdinalIgnoreCase) || c.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase)) && c.drawnOnTurn != turnCounter);
             if (propCard == null) { reason = "need Propagation"; return false; }
             return true;
         }
@@ -463,23 +509,298 @@ public class GameCardManager : MonoBehaviour
     {
         SetPlayStopperActive(true);
         if (botController == null) botController = FindAnyObjectByType<BotController>();
+        if (botController != null) botController.gameCardManager = this;
 
-        yield return StartCoroutine(RefillPlayerHandRoutine(0));
+        if (playerHandHolder != null && !playerHandHolder.gameObject.activeSelf)
+            playerHandHolder.gameObject.SetActive(true);
 
-        if (botController != null && deckRules != null)
+        if (startingWheel != null)
         {
-            botController.gameCardManager = this;
-            yield return StartCoroutine(botController.RefillBobHandRoutine(
-                deckRules.potentialDrawDeck,
-                deckRules.actionDrawDeck,
-                deckSpawnMarker,
-                maxPotentialCards,
-                maxActionCards));
+            // ---- 1. PLAYER SPIN ----
+            SendChatMessage("Spinning wheel for Player Spin...");
+            rolledPlayerStartingStimulus = SpinnerWheel.StartingStimulusChoice.None;
+            yield return StartCoroutine(startingWheel.SpinForStartingStimulusRoutine(choice =>
+            {
+                rolledPlayerStartingStimulus = choice;
+            }, dismissAfterSpin: false, spinnerOwnerLabel: "Player Spin"));
+
+            while (startingWheel.IsSpinning)
+                yield return null;
+
+            if (rolledPlayerStartingStimulus == SpinnerWheel.StartingStimulusChoice.None)
+                rolledPlayerStartingStimulus = ResolveStimulusFromWheel(startingWheel);
+
+            string playerWonCard = rolledPlayerStartingStimulus == SpinnerWheel.StartingStimulusChoice.StrongStimulus
+                ? "Strong stimulus"
+                : "Weak stimulus";
+            SendChatMessage($"Player Spin landed on {startingWheel.LastLandedColor} ({startingWheel.LastLandedAngle:F1}°) — Player won {playerWonCard}!");
+
+            EnsureRolledStartingCardInPlayerHand(0);
+            yield return StartCoroutine(RefillPlayerHandRoutine(0));
+            SendChatMessage($"Player starting hand dealt ({playerPotentialHand.Count + playerActionHand.Count}/{MaxTotalHandCards} cards).");
+
+            yield return new WaitForSeconds(0.4f);
+
+            // ---- 2. BOB SPIN ----
+            SendChatMessage("Spinning wheel for Bob Spin...");
+            rolledBobStartingStimulus = SpinnerWheel.StartingStimulusChoice.None;
+            yield return StartCoroutine(startingWheel.SpinForStartingStimulusRoutine(choice =>
+            {
+                rolledBobStartingStimulus = choice;
+            }, dismissAfterSpin: false, spinnerOwnerLabel: "Bob Spin"));
+
+            while (startingWheel.IsSpinning)
+                yield return null;
+
+            rolledBobStartingStimulus = ResolveStimulusFromWheel(startingWheel);
+
+            string bobWonCard = rolledBobStartingStimulus == SpinnerWheel.StartingStimulusChoice.StrongStimulus
+                ? "Strong stimulus"
+                : "Weak stimulus";
+            SendChatMessage($"Bob Spin landed on {startingWheel.LastLandedColor} ({startingWheel.LastLandedAngle:F1}°) — Bob won {bobWonCard}!");
+
+            // ---- 3. HIDE WHEEL, THEN DEAL BOB'S HAND ----
+            yield return new WaitForSeconds(0.75f);
+            startingWheel.HideWheelCompletely();
+
+            DealBobStartingHandDirectly(0);
+        }
+        else
+        {
+            rolledPlayerStartingStimulus = (rng.Next(2) == 0)
+                ? SpinnerWheel.StartingStimulusChoice.WeakStimulus
+                : SpinnerWheel.StartingStimulusChoice.StrongStimulus;
+            EnsureRolledStartingCardInPlayerHand(0);
+            yield return StartCoroutine(RefillPlayerHandRoutine(0));
+
+            rolledBobStartingStimulus = (rng.Next(2) == 0)
+                ? SpinnerWheel.StartingStimulusChoice.WeakStimulus
+                : SpinnerWheel.StartingStimulusChoice.StrongStimulus;
+            DealBobStartingHandDirectly(0);
         }
 
         currentTurn = (UnityEngine.Random.value < 0.5f) ? TurnState.PlayerTurn : TurnState.BotTurn;
         turnCounter = 1;
         StartTurn();
+    }
+
+    private SpinnerWheel.StartingStimulusChoice ResolveStimulusFromWheel(SpinnerWheel wheel)
+    {
+        if (wheel == null)
+            return SpinnerWheel.StartingStimulusChoice.WeakStimulus;
+
+        if (!string.IsNullOrWhiteSpace(wheel.LastLandedColor))
+        {
+            if (wheel.LastLandedColor.Trim().Equals("Yellow", StringComparison.OrdinalIgnoreCase))
+                return SpinnerWheel.StartingStimulusChoice.StrongStimulus;
+            if (wheel.LastLandedColor.Trim().Equals("Pink", StringComparison.OrdinalIgnoreCase))
+                return SpinnerWheel.StartingStimulusChoice.WeakStimulus;
+        }
+
+        if (wheel.LastStartingStimulus != SpinnerWheel.StartingStimulusChoice.None)
+            return wheel.LastStartingStimulus;
+
+        return SpinnerWheel.StartingStimulusChoice.WeakStimulus;
+    }
+
+    private void DealBobStartingHandDirectly(int drawTurnTag)
+    {
+        if (botController == null)
+            botController = FindAnyObjectByType<BotController>();
+
+        if (botController == null)
+        {
+            SendChatMessage("Bob starting hand skipped: no BotController found in scene.");
+            return;
+        }
+
+        botController.gameCardManager = this;
+        if (botController.bobPotentialHand == null) botController.bobPotentialHand = new List<GameCard>();
+        if (botController.bobActionHand == null) botController.bobActionHand = new List<GameCard>();
+
+        EnsureRolledStartingCardInBobHand(drawTurnTag);
+
+        int potCap = Mathf.Max(0, maxPotentialCards);
+        int actCap = Mathf.Max(0, maxActionCards);
+
+        while (botController.bobPotentialHand.Count < potCap && (botController.bobPotentialHand.Count + botController.bobActionHand.Count) < MaxTotalHandCards)
+        {
+            GameCard drawn = DrawCardWithAutoReshuffle(GameCardType.Potential);
+            if (drawn == null) break;
+            drawn.drawnOnTurn = drawTurnTag;
+            botController.bobPotentialHand.Add(drawn);
+        }
+
+        while (botController.bobActionHand.Count < actCap && (botController.bobPotentialHand.Count + botController.bobActionHand.Count) < MaxTotalHandCards)
+        {
+            GameCard drawn = DrawCardWithAutoReshuffle(GameCardType.Action);
+            if (drawn == null) break;
+            if (drawn.cardName.Equals("Tetrodotoxin", StringComparison.OrdinalIgnoreCase))
+            {
+                if (deckRules != null && deckRules.actionDiscardPile != null)
+                    deckRules.actionDiscardPile.Add(drawn);
+                continue;
+            }
+            drawn.drawnOnTurn = drawTurnTag;
+            botController.bobActionHand.Add(drawn);
+        }
+
+        EnsureRolledStartingCardInBobHand(drawTurnTag);
+
+        // Only announce the very first deal, and never list his cards
+        if (drawTurnTag == 0)
+        {
+            int bobTotal = botController.bobPotentialHand.Count + botController.bobActionHand.Count;
+            SendChatMessage($"Bob's starting hand dealt ({bobTotal}/{MaxTotalHandCards} cards).");
+        }
+
+        // Show Bob's cards physically at BobsHandPos
+        botController.UpdateBobVisualHand();
+    }
+
+    private void EnsureRolledStartingCardInPlayerHand(int drawTurnTag)
+    {
+        if (!guaranteeStartingStimulusInHand || rolledPlayerStartingStimulus == SpinnerWheel.StartingStimulusChoice.None)
+            return;
+
+        bool wantStrong = rolledPlayerStartingStimulus == SpinnerWheel.StartingStimulusChoice.StrongStimulus;
+        string targetName = wantStrong ? "Strong stimulus" : "Weak stimulus";
+        GameCardType targetType = wantStrong ? GameCardType.Potential : GameCardType.Action;
+
+        GameCard existing = FindCardInHands(targetName);
+        if (existing != null)
+        {
+            existing.drawnOnTurn = drawTurnTag;
+            EnforceHandLimitsAndSyncVisuals();
+            return;
+        }
+
+        List<GameCard> handList = wantStrong ? playerPotentialHand : playerActionHand;
+        int cap = wantStrong ? Mathf.Max(0, maxPotentialCards) : Mathf.Max(0, maxActionCards);
+        if (cap <= 0 || handList == null) return;
+
+        while (handList.Count >= cap || (playerPotentialHand.Count + playerActionHand.Count) >= MaxTotalHandCards)
+        {
+            if (handList.Count == 0) break;
+            int idx = handList.Count - 1;
+            GameCard removed = handList[idx];
+            handList.RemoveAt(idx);
+            if (deckRules != null)
+            {
+                if (wantStrong && deckRules.potentialDrawDeck != null) deckRules.potentialDrawDeck.Add(removed);
+                else if (!wantStrong && deckRules.actionDrawDeck != null) deckRules.actionDrawDeck.Add(removed);
+            }
+        }
+
+        GameCard starterCard = null;
+        if (deckRules != null)
+        {
+            List<GameCard> deck = wantStrong ? deckRules.potentialDrawDeck : deckRules.actionDrawDeck;
+            if (deck != null)
+            {
+                int foundIdx = deck.FindIndex(c => c != null && c.cardName.Equals(targetName, StringComparison.OrdinalIgnoreCase));
+                if (foundIdx >= 0)
+                {
+                    starterCard = deck[foundIdx];
+                    deck.RemoveAt(foundIdx);
+                }
+            }
+        }
+
+        if (starterCard == null)
+        {
+            starterCard = new GameCard
+            {
+                card_Id = $"{(wantStrong ? "POT" : "ACT")}_STARTER_{nextGeneratedCardId++:000}",
+                cardName = targetName,
+                type = targetType,
+                drawnOnTurn = drawTurnTag
+            };
+        }
+        else
+        {
+            starterCard.drawnOnTurn = drawTurnTag;
+        }
+
+        handList.Add(starterCard);
+        SpawnAndFlyCardToPlayer(starterCard);
+        EnforceHandLimitsAndSyncVisuals();
+    }
+
+    private void EnsureRolledStartingCardInBobHand(int drawTurnTag)
+    {
+        if (!guaranteeBobStartingStimulusInHand || rolledBobStartingStimulus == SpinnerWheel.StartingStimulusChoice.None || botController == null)
+            return;
+
+        bool wantStrong = rolledBobStartingStimulus == SpinnerWheel.StartingStimulusChoice.StrongStimulus;
+        string targetName = wantStrong ? "Strong stimulus" : "Weak stimulus";
+        GameCardType targetType = wantStrong ? GameCardType.Potential : GameCardType.Action;
+
+        if (botController.bobPotentialHand == null) botController.bobPotentialHand = new List<GameCard>();
+        if (botController.bobActionHand == null) botController.bobActionHand = new List<GameCard>();
+
+        GameCard existingPot = botController.bobPotentialHand.Find(c => c != null && c.cardName.Equals(targetName, StringComparison.OrdinalIgnoreCase));
+        if (existingPot != null)
+        {
+            existingPot.drawnOnTurn = drawTurnTag;
+            return;
+        }
+
+        GameCard existingAct = botController.bobActionHand.Find(c => c != null && c.cardName.Equals(targetName, StringComparison.OrdinalIgnoreCase));
+        if (existingAct != null)
+        {
+            existingAct.drawnOnTurn = drawTurnTag;
+            return;
+        }
+
+        List<GameCard> bobHand = wantStrong ? botController.bobPotentialHand : botController.bobActionHand;
+        int cap = wantStrong ? Mathf.Max(0, maxPotentialCards) : Mathf.Max(0, maxActionCards);
+        if (cap <= 0) return;
+
+        while (bobHand.Count >= cap)
+        {
+            if (bobHand.Count == 0) break;
+            int idx = bobHand.Count - 1;
+            GameCard removed = bobHand[idx];
+            bobHand.RemoveAt(idx);
+            if (deckRules != null)
+            {
+                if (wantStrong && deckRules.potentialDrawDeck != null) deckRules.potentialDrawDeck.Add(removed);
+                else if (!wantStrong && deckRules.actionDrawDeck != null) deckRules.actionDrawDeck.Add(removed);
+            }
+        }
+
+        GameCard starterCard = null;
+        if (deckRules != null)
+        {
+            List<GameCard> deck = wantStrong ? deckRules.potentialDrawDeck : deckRules.actionDrawDeck;
+            if (deck != null)
+            {
+                int foundIdx = deck.FindIndex(c => c != null && c.cardName.Equals(targetName, StringComparison.OrdinalIgnoreCase));
+                if (foundIdx >= 0)
+                {
+                    starterCard = deck[foundIdx];
+                    deck.RemoveAt(foundIdx);
+                }
+            }
+        }
+
+        if (starterCard == null)
+        {
+            starterCard = new GameCard
+            {
+                card_Id = $"{(wantStrong ? "POT" : "ACT")}_BOB_STARTER_{nextGeneratedCardId++:000}",
+                cardName = targetName,
+                type = targetType,
+                drawnOnTurn = drawTurnTag
+            };
+        }
+        else
+        {
+            starterCard.drawnOnTurn = drawTurnTag;
+        }
+
+        bobHand.Add(starterCard);
     }
 
     void StartTurn()
@@ -568,23 +889,31 @@ public class GameCardManager : MonoBehaviour
             else if (card.cardName.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase) ||
                      card.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase))
             {
-                playerPositionScript.targetIndex = Mathf.Min(deckRules.startIndex, maxIdx);
+                int extraSpaces = card.cardName.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase)
+                    ? Mathf.Max(0, strongStimulusExtraSpaces)
+                    : 0;
+                playerPositionScript.targetIndex = Mathf.Min(deckRules.startIndex + extraSpaces, maxIdx);
                 ConsumePlayedCard(card, visualObj, true);
                 BeginMoveLock();
             }
             return;
         }
 
-        if (card.cardName == "Alcohol" || card.cardName == "Absolute Refractory Period" ||
-            card.cardName == "Relative Refractory Period" || card.cardName == "Demyelinated Axon" ||
-            card.cardName == "Narrow Axon")
+        if (card.cardName.Equals("Alcohol", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Absolute refractory period", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Absolute Refractory Pink", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Relative refractory period", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Demyelinated axon", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Yellow Demyelinated Axon", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Narrow axon", StringComparison.OrdinalIgnoreCase) ||
+            card.cardName.Equals("Yellow Narrow Axon", StringComparison.OrdinalIgnoreCase))
         {
             ApplyActionPenaltyToBot(card.cardName);
             ConsumePlayedCard(card, visualObj, false);
             return;
         }
 
-        if (card.cardName == "Caffeine")
+        if (card.cardName.Equals("Caffeine", StringComparison.OrdinalIgnoreCase))
         {
             playerPositionScript.targetIndex = Mathf.Min(currentIndex + 2, deckRules.lastPinkIndex, maxIdx);
             ConsumePlayedCard(card, visualObj, false);
@@ -592,9 +921,12 @@ public class GameCardManager : MonoBehaviour
             return;
         }
 
-        if ((card.cardName == "Myelinated Axon" || card.cardName == "Large Axon") && nextStage == BoardStage.YellowPTrack)
+        if ((card.cardName.Equals("Myelinated axon", StringComparison.OrdinalIgnoreCase) ||
+             card.cardName.Equals("Yellow Myelinated Axon", StringComparison.OrdinalIgnoreCase) ||
+             card.cardName.Equals("Large axon", StringComparison.OrdinalIgnoreCase) ||
+             card.cardName.Equals("Yellow Large Axon", StringComparison.OrdinalIgnoreCase)) && nextStage == BoardStage.YellowPTrack)
         {
-            GameCard propCard = playerPotentialHand.Find(c => c != null && (c.cardName == "Propagation" || c.cardName == "Potential Joker") && c.drawnOnTurn != turnCounter);
+            GameCard propCard = playerPotentialHand.Find(c => c != null && (c.cardName.Equals("Propagation", StringComparison.OrdinalIgnoreCase) || c.cardName.Equals("Potential Joker", StringComparison.OrdinalIgnoreCase)) && c.drawnOnTurn != turnCounter);
             if (propCard == null) return;
 
             GameObject propVisual = discardController != null ? discardController.FindVisualForCard(propCard) : null;
@@ -648,11 +980,11 @@ public class GameCardManager : MonoBehaviour
     {
         if (botController == null || deckRules == null) return;
 
-        if (cardName == "Alcohol")
+        if (cardName.Equals("Alcohol", StringComparison.OrdinalIgnoreCase))
             botController.targetIndex = Mathf.Max(botController.currentIndex - 2, deckRules.startIndex);
-        else if (cardName == "Relative Refractory Period")
+        else if (cardName.Equals("Relative refractory period", StringComparison.OrdinalIgnoreCase))
         {
-            if (botController.bobPotentialHand != null && !botController.bobPotentialHand.Exists(c => c != null && c.cardName == "Strong Stimulus") && !botController.botSkipNextTurn)
+            if (botController.bobPotentialHand != null && !botController.bobPotentialHand.Exists(c => c != null && c.cardName.Equals("Strong stimulus", StringComparison.OrdinalIgnoreCase)) && !botController.botSkipNextTurn)
                 botController.botSkipNextTurn = true;
         }
         else if (!botController.botSkipNextTurn)
@@ -710,15 +1042,9 @@ public class GameCardManager : MonoBehaviour
         }
         else
         {
-            if (botController != null && deckRules != null)
-            {
-                yield return StartCoroutine(botController.RefillBobHandRoutine(
-                    deckRules.potentialDrawDeck,
-                    deckRules.actionDrawDeck,
-                    deckSpawnMarker,
-                    maxPotentialCards,
-                    maxActionCards));
-            }
+            // Bob draws at the end of his turn, so these are never "drawn this turn" on his next one.
+            // (-1 avoids a clash between the global turnCounter and Bob's own turn counter.)
+            DealBobStartingHandDirectly(-1);
             yield return new WaitForSeconds(0.4f);
             currentTurn = TurnState.PlayerTurn;
         }
@@ -749,7 +1075,7 @@ public class GameCardManager : MonoBehaviour
             GameCard drawn = DrawCardWithAutoReshuffle(GameCardType.Action);
             if (drawn == null) break;
 
-            if (drawn.cardName == "Tetrodotoxin")
+            if (drawn.cardName.Equals("Tetrodotoxin", StringComparison.OrdinalIgnoreCase))
             {
                 playerTetrodotoxinCount++;
                 if (deckRules.actionDiscardPile != null) deckRules.actionDiscardPile.Add(drawn);
@@ -772,7 +1098,11 @@ public class GameCardManager : MonoBehaviour
         if ((playerPotentialHand.Count + playerActionHand.Count) > MaxTotalHandCards) return;
 
         GameObject prefabToUse = (flyingCardFallbackPrefab != null) ? flyingCardFallbackPrefab : defaultUICardPrefab;
-        if (prefabToUse == null) return;
+        if (prefabToUse == null)
+        {
+            Debug.LogWarning("[GameCardManager] Cannot spawn card visual because both flyingCardFallbackPrefab and defaultUICardPrefab are null.");
+            return;
+        }
 
         Vector3 startPos = (deckSpawnMarker != null) ? deckSpawnMarker.position : Vector3.zero;
         GameObject flyingObj = Instantiate(prefabToUse, startPos, Quaternion.identity);
